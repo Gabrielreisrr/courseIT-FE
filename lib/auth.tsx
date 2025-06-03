@@ -25,6 +25,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const pathname = usePathname();
 
   // Check if user is logged in on initial load
   useEffect(() => {
@@ -60,6 +61,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (response.data) {
         setToken(response.data.token);
         setUser(response.data.data);
+        
+        // Get the redirect path from URL or default to dashboard
+        const params = new URLSearchParams(window.location.search);
+        const redirect = params.get('redirect') || '/dashboard';
+        router.push(redirect);
+        
         return { success: true };
       }
       
@@ -79,6 +86,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (response.data) {
         setToken(response.data.token);
         setUser(response.data.data);
+        router.push('/dashboard');
         return { success: true };
       }
       
@@ -93,6 +101,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setUser(null);
     router.push('/login');
   };
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!loading && !user && pathname !== '/login' && pathname !== '/register' && !pathname.startsWith('/auth')) {
+      router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
+    }
+  }, [loading, user, router, pathname]);
 
   return (
     <AuthContext.Provider value={{ user, loading, login, register, logout }}>
@@ -111,7 +126,7 @@ export function withAuth(Component: React.ComponentType) {
 
     useEffect(() => {
       if (!loading && !user) {
-        router.push(`/login?redirect=${pathname}`);
+        router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
       }
     }, [loading, user, router, pathname]);
 
