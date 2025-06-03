@@ -64,21 +64,21 @@ async function fetchApi<T>(
 // Auth API calls
 export const authApi = {
   login: async (email: string, password: string): Promise<ApiResponse<AuthResponse>> => {
-    return fetchApi<AuthResponse>('/auth/login', {
+    return fetchApi<AuthResponse>('/users/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
   },
 
   register: async (name: string, email: string, password: string, role = 'STUDENT'): Promise<ApiResponse<AuthResponse>> => {
-    return fetchApi<AuthResponse>('/auth/register', {
+    return fetchApi<AuthResponse>('/users/register', {
       method: 'POST',
       body: JSON.stringify({ name, email, password, role }),
     });
   },
 
   getMe: async (): Promise<ApiResponse<{ data: User }>> => {
-    return fetchApi<{ data: User }>('/auth/me');
+    return fetchApi<{ data: User }>('/users/me');
   },
 };
 
