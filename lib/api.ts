@@ -49,12 +49,12 @@ async function fetchApi<T>(
       headers: headers as HeadersInit,
     });
 
-    const data = await response.json();
-
     if (!response.ok) {
-      return { error: data.message || 'An error occurred' };
+      const errorData = await response.json();
+      return { error: errorData.message || 'An error occurred' };
     }
 
+    const data = await response.json();
     return { data: data as T };
   } catch (error) {
     return { error: (error as Error).message || 'Network error' };
@@ -64,21 +64,21 @@ async function fetchApi<T>(
 // Auth API calls
 export const authApi = {
   login: async (email: string, password: string): Promise<ApiResponse<AuthResponse>> => {
-    return fetchApi<AuthResponse>('/users/login/', {
+    return fetchApi<AuthResponse>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
   },
 
   register: async (name: string, email: string, password: string, role = 'STUDENT'): Promise<ApiResponse<AuthResponse>> => {
-    return fetchApi<AuthResponse>('/users/register', {
+    return fetchApi<AuthResponse>('/auth/register', {
       method: 'POST',
       body: JSON.stringify({ name, email, password, role }),
     });
   },
 
   getMe: async (): Promise<ApiResponse<{ data: User }>> => {
-    return fetchApi<{ data: User }>('/me');
+    return fetchApi<{ data: User }>('/auth/me');
   },
 };
 
