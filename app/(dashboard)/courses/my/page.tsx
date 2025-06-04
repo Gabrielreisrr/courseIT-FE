@@ -22,22 +22,22 @@ export default function MyCoursesPage() {
       try {
         // Fetch user enrollments
         const enrollmentsResponse = await enrollmentsApi.getMyEnrollments();
-        
+
         if (enrollmentsResponse.data && enrollmentsResponse.data.data) {
           const userEnrollments = enrollmentsResponse.data.data;
           setEnrollments(userEnrollments);
-          
+
           // Fetch details of enrolled courses
           const enrolledCoursesData = await Promise.all(
-            userEnrollments.map(enrollment => 
+            userEnrollments.map((enrollment) =>
               coursesApi.getCourseById(enrollment.courseId)
             )
           );
-          
+
           const courses = enrolledCoursesData
-            .filter(response => response.data)
-            .map(response => response.data!.data);
-            
+            .filter((response) => response.data)
+            .map((response) => response.data!.data);
+
           setEnrolledCourses(courses);
         }
       } catch (error) {
@@ -77,11 +77,13 @@ export default function MyCoursesPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {enrolledCourses.map((course) => {
               // Find enrollment to get progress
-              const enrollment = enrollments.find(e => e.courseId === course.id);
+              const enrollment = enrollments.find(
+                (e) => e.courseId === course.id
+              );
               return (
-                <CourseCard 
-                  key={course.id} 
-                  course={course} 
+                <CourseCard
+                  key={course.id}
+                  course={course}
                   progress={enrollment?.progress || 0}
                 />
               );
@@ -89,7 +91,9 @@ export default function MyCoursesPage() {
           </div>
         ) : (
           <div className="p-8 text-center bg-muted rounded-lg">
-            <h3 className="text-lg font-medium mb-2">You're not enrolled in any courses yet</h3>
+            <h3 className="text-lg font-medium mb-2">
+              You're not enrolled in any courses yet
+            </h3>
             <p className="text-muted-foreground mb-4">
               Browse our course catalog and start your learning journey today!
             </p>

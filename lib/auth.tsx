@@ -1,77 +1,80 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import { authApi, setToken, removeToken, getToken } from '@/lib/api';
-import { User } from '@/lib/types';
+import { createContext, useContext, useEffect, useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { authApi, setToken, removeToken, getToken } from "@/lib/api";
+import { User } from "@/lib/types";
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<{success: boolean; error?: string}>;
-  register: (name: string, email: string, password: string) => Promise<{success: boolean; error?: string}>;
+  login: (
+    email: string,
+    password: string
+  ) => Promise<{ success: boolean; error?: string }>;
+  register: (
+    name: string,
+    email: string,
+    password: string
+  ) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
 }
 
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  loading: true,
-  login: async () => ({ success: false }),
-  register: async () => ({ success: false }),
-  logout: () => {},
-});
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
-  const pathname = usePathname();
 
-  // Check if user is logged in on initial load
   useEffect(() => {
-    const checkAuth = async () => {
-      const token = getToken();
-      if (token) {
-        try {
+    const initAuth = async () => {
+      try {
+        const token = getToken();
+        if (token) {
           const response = await authApi.getMe();
           if (response.data) {
-            setUser(response.data.data);
+            setUser(response.data);
           } else {
-            // Token invalid, clear it
             removeToken();
           }
-        } catch (error) {
-          console.error('Auth check failed:', error);
-          removeToken();
         }
+      } catch (error) {
+        console.error("Auth initialization error:", error);
+        removeToken();
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
-    checkAuth();
+    initAuth();
   }, []);
 
   const login = async (email: string, password: string) => {
     try {
+      console.log("Attempting login with:", { email });
       const response = await authApi.login(email, password);
+
       if (response.error) {
+        console.error("Login error:", response.error);
         return { success: false, error: response.error };
       }
-      
+
       if (response.data) {
+        console.log("Login successful, setting token and user");
         setToken(response.data.token);
-        setUser(response.data.data);
-        
-        // Get the redirect path from URL or default to dashboard
+        setUser(response.data.user);
+
         const params = new URLSearchParams(window.location.search);
-        const redirect = params.get('redirect') || '/dashboard';
-        router.push(redirect);
-        
+        const redirect = params.get("redirect") || "/dashboard";
+
+        window.location.href = redirect;
         return { success: true };
       }
-      
-      return { success: false, error: 'Unknown error occurred' };
+
+      console.error("Login failed: Unknown error");
+      return { success: false, error: "Unknown error occurred" };
     } catch (error) {
+      console.error("Login exception:", error);
       return { success: false, error: (error as Error).message };
     }
   };
@@ -79,18 +82,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const register = async (name: string, email: string, password: string) => {
     try {
       const response = await authApi.register(name, email, password);
+
       if (response.error) {
         return { success: false, error: response.error };
       }
-      
+
       if (response.data) {
         setToken(response.data.token);
-        setUser(response.data.data);
-        router.push('/dashboard');
+        setUser(response.data.user);
         return { success: true };
       }
-      
-      return { success: false, error: 'Unknown error occurred' };
+
+      return { success: false, error: "Unknown error occurred" };
     } catch (error) {
       return { success: false, error: (error as Error).message };
     }
@@ -99,15 +102,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const logout = () => {
     removeToken();
     setUser(null);
-    router.push('/login');
+    window.location.href = "/login";
   };
-
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!loading && !user && pathname !== '/login' && pathname !== '/register' && !pathname.startsWith('/auth')) {
-      router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
-    }
-  }, [loading, user, router, pathname]);
 
   return (
     <AuthContext.Provider value={{ user, loading, login, register, logout }}>
@@ -116,7 +112,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
+};
 
 export function withAuth(Component: React.ComponentType) {
   return function ProtectedRoute(props: any) {
@@ -146,14 +148,17 @@ export function withAuth(Component: React.ComponentType) {
   };
 }
 
-export function withRole(Component: React.ComponentType, allowedRoles: string[]) {
+export function withRole(
+  Component: React.ComponentType,
+  allowedRoles: string[]
+) {
   return function RoleProtectedRoute(props: any) {
     const { user, loading } = useAuth();
     const router = useRouter();
 
     useEffect(() => {
       if (!loading && (!user || !allowedRoles.includes(user.role))) {
-        router.push('/dashboard');
+        router.push("/dashboard");
       }
     }, [loading, user, router]);
 

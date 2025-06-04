@@ -6,8 +6,6 @@ export default function AuthLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // This is a server component, so we need to check auth on the server side
-  // We can't use the useAuth hook here
   const token = getToken();
 
   if (token) {

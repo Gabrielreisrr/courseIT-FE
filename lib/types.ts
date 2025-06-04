@@ -1,5 +1,4 @@
-// User types
-export type UserRole = 'ADMIN' | 'STUDENT';
+export type UserRole = "ADMIN" | "STUDENT";
 
 export interface User {
   id: string;
@@ -8,7 +7,6 @@ export interface User {
   role: UserRole;
 }
 
-// Course types
 export interface Course {
   id: string;
   title: string;
@@ -33,10 +31,9 @@ export interface Lesson {
   moduleId: string;
   order: number;
   content?: string;
-  duration?: number; // in minutes
+  duration?: number;
 }
 
-// Enrollment and progress types
 export interface Enrollment {
   id: string;
   userId: string;
@@ -53,7 +50,6 @@ export interface Progress {
   completedAt?: string;
 }
 
-// API response types
 export interface ApiResponse<T> {
   data?: T;
   error?: string;
@@ -61,7 +57,7 @@ export interface ApiResponse<T> {
 
 export interface AuthResponse {
   token: string;
-  data: User;  // Changed from user to data to match API response structure
+  user: User;
 }
 
 export interface PaginatedResponse<T> {

@@ -10,7 +10,6 @@ import {
   FileText,
 } from "lucide-react";
 
-import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { CourseCard } from "@/components/course-card";
 import { coursesApi, enrollmentsApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -27,21 +26,18 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch all courses
         const coursesResponse = await coursesApi.getAllCourses();
-
-        // Fetch user enrollments if user is a student
         const enrollmentsResponse =
           user?.role === "STUDENT"
             ? await enrollmentsApi.getMyEnrollments()
-            : { data: { data: [] } };
+            : { data: [] };
 
         if (coursesResponse.data) {
-          setCourses(coursesResponse.data.data || []);
+          setCourses(coursesResponse.data);
         }
 
         if (enrollmentsResponse.data) {
-          setEnrollments(enrollmentsResponse.data.data || []);
+          setEnrollments(enrollmentsResponse.data);
         }
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
@@ -53,50 +49,44 @@ export default function DashboardPage() {
     fetchData();
   }, [user]);
 
-  // Filter enrolled courses for students
   const enrolledCourses = courses.filter((course) =>
     enrollments.some((enrollment) => enrollment.courseId === course.id)
   );
 
-  // For admin, show different dashboard
   const isAdmin = user?.role === "ADMIN";
 
   if (loading) {
     return (
-      <DashboardLayout>
-        <div className="p-6 md:p-8 flex flex-col items-center justify-center min-h-[50vh]">
-          <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-          <p className="text-muted-foreground">Loading dashboard...</p>
-        </div>
-      </DashboardLayout>
+      <div className="p-6 md:p-8 flex flex-col items-center justify-center min-h-[50vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+        <p className="text-muted-foreground">Loading dashboard...</p>
+      </div>
     );
   }
 
   return (
-    <DashboardLayout>
-      <div className="p-6 md:p-8">
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight">
-            Hello, {user?.name}!
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            {isAdmin
-              ? "Manage your platform and content."
-              : "Here's an overview of your learning journey."}
-          </p>
-        </header>
+    <div className="p-6 md:p-8">
+      <header className="mb-8">
+        <h1 className="text-3xl font-bold tracking-tight">
+          Hello, {user?.name}!
+        </h1>
+        <p className="text-muted-foreground mt-1">
+          {isAdmin
+            ? "Manage your platform and content."
+            : "Here's an overview of your learning journey."}
+        </p>
+      </header>
 
-        {isAdmin ? (
-          <AdminDashboard courses={courses} />
-        ) : (
-          <StudentDashboard
-            courses={courses}
-            enrolledCourses={enrolledCourses}
-            enrollments={enrollments}
-          />
-        )}
-      </div>
-    </DashboardLayout>
+      {isAdmin ? (
+        <AdminDashboard courses={courses} />
+      ) : (
+        <StudentDashboard
+          courses={courses}
+          enrolledCourses={enrolledCourses}
+          enrollments={enrollments}
+        />
+      )}
+    </div>
   );
 }
 
@@ -113,7 +103,6 @@ function StudentDashboard({
 }: StudentDashboardProps) {
   return (
     <div className="space-y-10">
-      {/* Enrolled Courses */}
       <section>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-2xl font-semibold">Your Courses</h2>
@@ -127,7 +116,6 @@ function StudentDashboard({
         {enrolledCourses.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {enrolledCourses.slice(0, 3).map((course) => {
-              // Find enrollment to get progress
               const enrollment = enrollments.find(
                 (e) => e.courseId === course.id
               );
@@ -155,7 +143,6 @@ function StudentDashboard({
         )}
       </section>
 
-      {/* All Courses */}
       <section>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-2xl font-semibold">Recommended Courses</h2>
@@ -188,7 +175,6 @@ interface AdminDashboardProps {
 function AdminDashboard({ courses }: AdminDashboardProps) {
   return (
     <div className="space-y-10">
-      {/* Quick Stats */}
       <section>
         <h2 className="text-2xl font-semibold mb-4">Overview</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -215,7 +201,6 @@ function AdminDashboard({ courses }: AdminDashboardProps) {
         </div>
       </section>
 
-      {/* Admin Quick Actions */}
       <section>
         <h2 className="text-2xl font-semibold mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -258,7 +243,6 @@ function AdminDashboard({ courses }: AdminDashboardProps) {
         </div>
       </section>
 
-      {/* Recent Courses */}
       <section>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-2xl font-semibold">Recent Courses</h2>

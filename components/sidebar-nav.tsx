@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { 
-  Home, 
-  BookOpen, 
-  User, 
-  UserCog, 
+import {
+  Home,
+  BookOpen,
+  User,
+  UserCog,
   BookMarked,
   FileText,
   LogOut,
@@ -29,7 +29,6 @@ export function SidebarNav() {
 
   const isAdmin = user?.role === "ADMIN";
 
-  // Navigation items
   const navItems = [
     {
       title: "Dashboard",
@@ -37,7 +36,7 @@ export function SidebarNav() {
       icon: <Home className="h-5 w-5" />,
     },
     {
-      title: "Courses",
+      title: "My Courses",
       href: "/courses",
       icon: <BookOpen className="h-5 w-5" />,
     },
@@ -48,7 +47,6 @@ export function SidebarNav() {
     },
   ];
 
-  // Admin specific items
   const adminItems = isAdmin
     ? [
         {
@@ -148,17 +146,21 @@ export function SidebarNav() {
       <div className="p-4 border-t">
         <div className="flex items-center gap-3 mb-4">
           <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
-            <span className="text-primary font-medium">{user?.name?.charAt(0).toUpperCase()}</span>
+            <span className="text-primary font-medium">
+              {user?.name?.charAt(0).toUpperCase()}
+            </span>
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium truncate">{user?.name}</p>
-            <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+            <p className="text-xs text-muted-foreground truncate">
+              {user?.email}
+            </p>
           </div>
         </div>
 
-        <Button 
-          variant="outline" 
-          size="sm" 
+        <Button
+          variant="outline"
+          size="sm"
           className="w-full justify-start"
           onClick={logout}
         >

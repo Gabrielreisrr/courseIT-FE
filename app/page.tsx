@@ -1,42 +1,70 @@
+"use client";
+
 import Link from "next/link";
-import { ChevronRight, BookOpen, Trophy, User, BrainCircuit } from "lucide-react";
+import {
+  ChevronRight,
+  BookOpen,
+  Trophy,
+  User,
+  BrainCircuit,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Logo } from "@/components/logo";
+import { useAuth } from "@/lib/auth";
+import { Loader2 } from "lucide-react";
 
 export default function LandingPage() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Header */}
       <header className="border-b bg-background">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <Logo />
-          
+
           <div className="flex items-center gap-4">
             <ThemeToggle />
             <Button variant="outline" size="sm" asChild>
               <Link href="/login">Login</Link>
             </Button>
-            <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700" asChild>
+            <Button
+              size="sm"
+              className="bg-indigo-600 hover:bg-indigo-700"
+              asChild
+            >
               <Link href="/register">Sign Up</Link>
             </Button>
           </div>
         </div>
       </header>
 
-      {/* Hero Section */}
       <section className="py-16 md:py-24 bg-gradient-to-b from-background to-background/90">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-6">
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
-                Learn anything, <span className="text-indigo-600">anywhere</span>
+                Learn anything,{" "}
+                <span className="text-indigo-600">anywhere</span>
               </h1>
               <p className="text-lg md:text-xl text-muted-foreground max-w-md">
-                Expand your skills with our expert-led courses. Learn at your own pace and achieve your goals.
+                Expand your skills with our expert-led courses. Learn at your
+                own pace and achieve your goals.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
-                <Button size="lg" className="bg-indigo-600 hover:bg-indigo-700" asChild>
+                <Button
+                  size="lg"
+                  className="bg-indigo-600 hover:bg-indigo-700"
+                  asChild
+                >
                   <Link href="/register">
                     Get Started
                     <ChevronRight className="ml-2 h-4 w-4" />
@@ -50,7 +78,7 @@ export default function LandingPage() {
             <div className="relative">
               <div className="relative aspect-video rounded-xl overflow-hidden shadow-xl">
                 <img
-                  src="https://images.pexels.com/photos/5428003/pexels-photo-5428003.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1"
+                  src="https:images.pexels.com/photos/5428003/pexels-photo-5428003.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1"
                   alt="Student learning online"
                   className="object-cover w-full h-full"
                 />
@@ -60,13 +88,13 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Features */}
       <section className="py-16 bg-muted/50">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold">Why Choose CourseIT?</h2>
             <p className="text-muted-foreground mt-2 max-w-2xl mx-auto">
-              Our platform is designed to provide you with the best learning experience possible.
+              Our platform is designed to provide you with the best learning
+              experience possible.
             </p>
           </div>
 
@@ -106,7 +134,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* CTA */}
       <section className="py-16 bg-indigo-600 text-white">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold mb-4">Ready to start learning?</h2>
@@ -119,7 +146,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Footer */}
       <footer className="bg-background border-t py-8">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-center">
@@ -130,13 +156,22 @@ export default function LandingPage() {
               </p>
             </div>
             <div className="flex gap-8">
-              <Link href="#" className="text-sm hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+              <Link
+                href="#"
+                className="text-sm hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+              >
                 Terms
               </Link>
-              <Link href="#" className="text-sm hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+              <Link
+                href="#"
+                className="text-sm hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+              >
                 Privacy
               </Link>
-              <Link href="#" className="text-sm hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+              <Link
+                href="#"
+                className="text-sm hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+              >
                 Help
               </Link>
             </div>

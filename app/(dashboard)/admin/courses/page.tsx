@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { 
-  Edit, 
-  Trash2, 
-  Plus, 
+import {
+  Edit,
+  Trash2,
+  Plus,
   Loader2,
   Search,
   MoreVertical,
-  Eye
+  Eye,
 } from "lucide-react";
 
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
@@ -20,11 +20,11 @@ import { useAuth } from "@/lib/auth";
 import { withRole } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
   Table,
@@ -66,7 +66,6 @@ const CoursesAdminPage = () => {
     fetchData();
   }, [toast]);
 
-  // Filter courses based on search query
   useEffect(() => {
     if (!searchQuery.trim()) {
       setFilteredCourses(courses);
@@ -75,19 +74,23 @@ const CoursesAdminPage = () => {
 
     const query = searchQuery.toLowerCase();
     const filtered = courses.filter(
-      course => 
+      (course) =>
         course.title.toLowerCase().includes(query) ||
         course.description.toLowerCase().includes(query)
     );
-    
+
     setFilteredCourses(filtered);
   }, [searchQuery, courses]);
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this course? This action cannot be undone.")) {
+    if (
+      !confirm(
+        "Are you sure you want to delete this course? This action cannot be undone."
+      )
+    ) {
       return;
     }
-    
+
     try {
       const response = await coursesApi.deleteCourse(id);
       if (response.error) {
@@ -97,8 +100,8 @@ const CoursesAdminPage = () => {
           description: response.error,
         });
       } else {
-        setCourses(prev => prev.filter(course => course.id !== id));
-        setFilteredCourses(prev => prev.filter(course => course.id !== id));
+        setCourses((prev) => prev.filter((course) => course.id !== id));
+        setFilteredCourses((prev) => prev.filter((course) => course.id !== id));
         toast({
           title: "Course Deleted",
           description: "The course has been successfully deleted.",
@@ -130,7 +133,9 @@ const CoursesAdminPage = () => {
       <div className="p-6 md:p-8">
         <header className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Courses Management</h1>
+            <h1 className="text-3xl font-bold tracking-tight">
+              Courses Management
+            </h1>
             <p className="text-muted-foreground mt-1">
               Create, edit, and manage your courses.
             </p>
@@ -161,8 +166,12 @@ const CoursesAdminPage = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Title</TableHead>
-                  <TableHead className="hidden md:table-cell">Description</TableHead>
-                  <TableHead className="hidden md:table-cell">Students</TableHead>
+                  <TableHead className="hidden md:table-cell">
+                    Description
+                  </TableHead>
+                  <TableHead className="hidden md:table-cell">
+                    Students
+                  </TableHead>
                   <TableHead className="hidden md:table-cell">Rating</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -170,12 +179,18 @@ const CoursesAdminPage = () => {
               <TableBody>
                 {filteredCourses.map((course) => (
                   <TableRow key={course.id}>
-                    <TableCell className="font-medium">{course.title}</TableCell>
+                    <TableCell className="font-medium">
+                      {course.title}
+                    </TableCell>
                     <TableCell className="hidden md:table-cell max-w-xs truncate">
                       {course.description}
                     </TableCell>
-                    <TableCell className="hidden md:table-cell">{course.learnerCount || 0}</TableCell>
-                    <TableCell className="hidden md:table-cell">{course.rating || "-"}</TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      {course.learnerCount || 0}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      {course.rating || "-"}
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end items-center space-x-2">
                         <div className="md:block hidden">
@@ -191,9 +206,9 @@ const CoursesAdminPage = () => {
                               Edit
                             </Link>
                           </Button>
-                          <Button 
-                            size="sm" 
-                            variant="ghost" 
+                          <Button
+                            size="sm"
+                            variant="ghost"
                             className="text-destructive hover:text-destructive"
                             onClick={() => handleDelete(course.id)}
                           >
@@ -221,7 +236,7 @@ const CoursesAdminPage = () => {
                                   Edit
                                 </Link>
                               </DropdownMenuItem>
-                              <DropdownMenuItem 
+                              <DropdownMenuItem
                                 className="text-destructive focus:text-destructive"
                                 onClick={() => handleDelete(course.id)}
                               >
@@ -261,5 +276,4 @@ const CoursesAdminPage = () => {
   );
 };
 
-// Wrap the component with role protection
 export default withRole(CoursesAdminPage, ["ADMIN"]);

@@ -1,47 +1,56 @@
-// API client for making requests to the backend
-import { AuthResponse, ApiResponse, Course, Module, Lesson, User, Enrollment, Progress } from './types';
+import {
+  AuthResponse,
+  ApiResponse,
+  Course,
+  Module,
+  Lesson,
+  User,
+  Enrollment,
+  Progress,
+  PaginatedResponse,
+} from "./types";
 
-const API_URL = 'http://localhost:3000/api';
+const API_URL = "http://localhost:3000/api";
 
-// Helper to get the auth token
 export const getToken = (): string | null => {
-  if (typeof window !== 'undefined') {
-    return localStorage.getItem('token');
+  if (typeof document !== "undefined") {
+    return (
+      document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("token="))
+        ?.split("=")[1] || null
+    );
   }
   return null;
 };
 
-// Helper to set the auth token
 export const setToken = (token: string): void => {
-  localStorage.setItem('token', token);
+  document.cookie = `token=${token}; path=/; max-age=2592000; SameSite=Strict`;
 };
 
-// Helper to remove the auth token
 export const removeToken = (): void => {
-  localStorage.removeItem('token');
+  document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
 };
 
-// Helper to check if user is authenticated
 export const isAuthenticated = (): boolean => {
   const token = getToken();
   return !!token;
 };
 
-// Generic fetch function with authentication
 async function fetchApi<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> {
   try {
     const token = getToken();
-    
+
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...(options.headers as Record<string, string>),
     };
 
     if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+      headers["Authorization"] = `Bearer ${token}`;
     }
 
     const response = await fetch(`${API_URL}${endpoint}`, {
@@ -49,162 +58,191 @@ async function fetchApi<T>(
       headers: headers as HeadersInit,
     });
 
+    const data = await response.json();
+
     if (!response.ok) {
-      const errorData = await response.json();
-      return { error: errorData.message || 'An error occurred' };
+      return { error: data.message || data.error || "An error occurred" };
     }
 
-    const data = await response.json();
     return { data: data as T };
   } catch (error) {
-    return { error: (error as Error).message || 'Network error' };
+    return { error: (error as Error).message || "Network error" };
   }
 }
 
-// Auth API calls
 export const authApi = {
-  login: async (email: string, password: string): Promise<ApiResponse<AuthResponse>> => {
-    return fetchApi<AuthResponse>('/users/login', {
-      method: 'POST',
+  login: async (
+    email: string,
+    password: string
+  ): Promise<ApiResponse<AuthResponse>> => {
+    return fetchApi<AuthResponse>("/users/login", {
+      method: "POST",
       body: JSON.stringify({ email, password }),
     });
   },
 
-  register: async (name: string, email: string, password: string, role = 'STUDENT'): Promise<ApiResponse<AuthResponse>> => {
-    return fetchApi<AuthResponse>('/users/register', {
-      method: 'POST',
+  register: async (
+    name: string,
+    email: string,
+    password: string,
+    role = "STUDENT"
+  ): Promise<ApiResponse<AuthResponse>> => {
+    return fetchApi<AuthResponse>("/users/register", {
+      method: "POST",
       body: JSON.stringify({ name, email, password, role }),
     });
   },
 
-  getMe: async (): Promise<ApiResponse<{ data: User }>> => {
-    return fetchApi<{ data: User }>('/users/me');
+  getMe: async (): Promise<ApiResponse<User>> => {
+    return fetchApi<User>("/users/me");
   },
 };
 
-// Courses API calls
 export const coursesApi = {
-  getAllCourses: async (): Promise<ApiResponse<{ data: Course[] }>> => {
-    return fetchApi<{ data: Course[] }>('/courses');
+  getAllCourses: async (): Promise<ApiResponse<PaginatedResponse<Course>>> => {
+    return fetchApi<PaginatedResponse<Course>>("/courses");
   },
 
-  getCourseById: async (id: string): Promise<ApiResponse<{ data: Course }>> => {
-    return fetchApi<{ data: Course }>(`/courses/${id}`);
+  getCourseById: async (id: string): Promise<ApiResponse<Course>> => {
+    return fetchApi<Course>(`/courses/${id}`);
   },
 
-  createCourse: async (courseData: any): Promise<ApiResponse<{ data: Course }>> => {
-    return fetchApi<{ data: Course }>('/courses', {
-      method: 'POST',
+  createCourse: async (courseData: any): Promise<ApiResponse<Course>> => {
+    return fetchApi<Course>("/courses", {
+      method: "POST",
       body: JSON.stringify(courseData),
     });
   },
 
-  updateCourse: async (id: string, courseData: any): Promise<ApiResponse<{ data: Course }>> => {
-    return fetchApi<{ data: Course }>(`/courses/${id}`, {
-      method: 'PUT',
+  updateCourse: async (
+    id: string,
+    courseData: any
+  ): Promise<ApiResponse<Course>> => {
+    return fetchApi<Course>(`/courses/${id}`, {
+      method: "PUT",
       body: JSON.stringify(courseData),
     });
   },
 
-  deleteCourse: async (id: string): Promise<ApiResponse<{ success: boolean }>> => {
+  deleteCourse: async (
+    id: string
+  ): Promise<ApiResponse<{ success: boolean }>> => {
     return fetchApi<{ success: boolean }>(`/courses/${id}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   },
 };
 
-// Modules API calls
 export const modulesApi = {
-  getModulesByCourse: async (courseId: string): Promise<ApiResponse<{ data: Module[] }>> => {
-    return fetchApi<{ data: Module[] }>(`/modules/course/${courseId}`);
+  getModulesByCourse: async (
+    courseId: string
+  ): Promise<ApiResponse<PaginatedResponse<Module>>> => {
+    return fetchApi<PaginatedResponse<Module>>(`/modules/course/${courseId}`);
   },
 
-  createModule: async (moduleData: any): Promise<ApiResponse<{ data: Module }>> => {
-    return fetchApi<{ data: Module }>('/modules', {
-      method: 'POST',
+  createModule: async (moduleData: any): Promise<ApiResponse<Module>> => {
+    return fetchApi<Module>("/modules", {
+      method: "POST",
       body: JSON.stringify(moduleData),
     });
   },
 
-  updateModule: async (id: string, moduleData: any): Promise<ApiResponse<{ data: Module }>> => {
-    return fetchApi<{ data: Module }>(`/modules/${id}`, {
-      method: 'PUT',
+  updateModule: async (
+    id: string,
+    moduleData: any
+  ): Promise<ApiResponse<Module>> => {
+    return fetchApi<Module>(`/modules/${id}`, {
+      method: "PUT",
       body: JSON.stringify(moduleData),
     });
   },
 
-  deleteModule: async (id: string): Promise<ApiResponse<{ success: boolean }>> => {
+  deleteModule: async (
+    id: string
+  ): Promise<ApiResponse<{ success: boolean }>> => {
     return fetchApi<{ success: boolean }>(`/modules/${id}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   },
 };
 
-// Lessons API calls
 export const lessonsApi = {
-  getLessonsByModule: async (moduleId: string): Promise<ApiResponse<{ data: Lesson[] }>> => {
-    return fetchApi<{ data: Lesson[] }>(`/lessons/module/${moduleId}`);
+  getLessonsByModule: async (
+    moduleId: string
+  ): Promise<ApiResponse<PaginatedResponse<Lesson>>> => {
+    return fetchApi<PaginatedResponse<Lesson>>(`/lessons/module/${moduleId}`);
   },
 
-  createLesson: async (lessonData: any): Promise<ApiResponse<{ data: Lesson }>> => {
-    return fetchApi<{ data: Lesson }>('/lessons', {
-      method: 'POST',
+  createLesson: async (lessonData: any): Promise<ApiResponse<Lesson>> => {
+    return fetchApi<Lesson>("/lessons", {
+      method: "POST",
       body: JSON.stringify(lessonData),
     });
   },
 
-  updateLesson: async (id: string, lessonData: any): Promise<ApiResponse<{ data: Lesson }>> => {
-    return fetchApi<{ data: Lesson }>(`/lessons/${id}`, {
-      method: 'PUT',
+  updateLesson: async (
+    id: string,
+    lessonData: any
+  ): Promise<ApiResponse<Lesson>> => {
+    return fetchApi<Lesson>(`/lessons/${id}`, {
+      method: "PUT",
       body: JSON.stringify(lessonData),
     });
   },
 
-  deleteLesson: async (id: string): Promise<ApiResponse<{ success: boolean }>> => {
+  deleteLesson: async (
+    id: string
+  ): Promise<ApiResponse<{ success: boolean }>> => {
     return fetchApi<{ success: boolean }>(`/lessons/${id}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   },
 };
 
-// Enrollments API calls
 export const enrollmentsApi = {
-  getMyEnrollments: async (): Promise<ApiResponse<{ data: Enrollment[] }>> => {
-    return fetchApi<{ data: Enrollment[] }>('/enrollments/my');
+  getMyEnrollments: async (): Promise<
+    ApiResponse<PaginatedResponse<Enrollment>>
+  > => {
+    return fetchApi<PaginatedResponse<Enrollment>>("/enrollments/my");
   },
 
-  getEnrollmentsByCourse: async (courseId: string): Promise<ApiResponse<{ data: Enrollment[] }>> => {
-    return fetchApi<{ data: Enrollment[] }>(`/enrollments/courses/${courseId}`);
+  enrollInCourse: async (
+    courseId: string
+  ): Promise<ApiResponse<Enrollment>> => {
+    return fetchApi<Enrollment>("/enrollments", {
+      method: "POST",
+      body: JSON.stringify({ courseId }),
+    });
   },
 
-  enrollInCourse: async (courseId: string): Promise<ApiResponse<{ data: Enrollment }>> => {
-    return fetchApi<{ data: Enrollment }>(`/enrollments/courses/${courseId}`, {
-      method: 'POST',
+  unenrollFromCourse: async (
+    courseId: string
+  ): Promise<ApiResponse<{ success: boolean }>> => {
+    return fetchApi<{ success: boolean }>(`/enrollments/${courseId}`, {
+      method: "DELETE",
     });
   },
 };
 
-// Progress API calls
 export const progressApi = {
-  getCourseProgress: async (courseId: string): Promise<ApiResponse<{ data: Progress[] }>> => {
-    return fetchApi<{ data: Progress[] }>(`/progress/courses/${courseId}`);
+  getLessonProgress: async (
+    lessonId: string
+  ): Promise<ApiResponse<Progress>> => {
+    return fetchApi<Progress>(`/progress/lesson/${lessonId}`);
   },
 
-  getLessonProgress: async (lessonId: string): Promise<ApiResponse<{ data: Progress }>> => {
-    return fetchApi<{ data: Progress }>(`/progress/lessons/${lessonId}`);
-  },
-
-  markLessonAsCompleted: async (lessonId: string): Promise<ApiResponse<{ data: Progress }>> => {
-    return fetchApi<{ data: Progress }>(`/progress/lessons/${lessonId}`, {
-      method: 'POST',
+  markLessonAsCompleted: async (
+    lessonId: string
+  ): Promise<ApiResponse<Progress>> => {
+    return fetchApi<Progress>(`/progress/lesson/${lessonId}/complete`, {
+      method: "POST",
     });
   },
 };
 
-// Users API calls
 export const usersApi = {
   getAllUsers: async (): Promise<ApiResponse<{ data: User[] }>> => {
-    return fetchApi<{ data: User[] }>('/users');
+    return fetchApi<{ data: User[] }>("/users");
   },
 
   getUserById: async (id: string): Promise<ApiResponse<{ data: User }>> => {
@@ -212,22 +250,27 @@ export const usersApi = {
   },
 
   createUser: async (userData: any): Promise<ApiResponse<{ data: User }>> => {
-    return fetchApi<{ data: User }>('/users', {
-      method: 'POST',
+    return fetchApi<{ data: User }>("/users", {
+      method: "POST",
       body: JSON.stringify(userData),
     });
   },
 
-  updateUser: async (id: string, userData: any): Promise<ApiResponse<{ data: User }>> => {
+  updateUser: async (
+    id: string,
+    userData: any
+  ): Promise<ApiResponse<{ data: User }>> => {
     return fetchApi<{ data: User }>(`/users/${id}`, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify(userData),
     });
   },
 
-  deleteUser: async (id: string): Promise<ApiResponse<{ success: boolean }>> => {
+  deleteUser: async (
+    id: string
+  ): Promise<ApiResponse<{ success: boolean }>> => {
     return fetchApi<{ success: boolean }>(`/users/${id}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   },
 };

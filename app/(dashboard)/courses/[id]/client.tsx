@@ -2,26 +2,39 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { 
-  Clock, 
-  Award, 
-  BarChart, 
-  ChevronDown, 
-  ChevronRight, 
+import {
+  Clock,
+  Award,
+  BarChart,
+  ChevronDown,
+  ChevronRight,
   CheckCircle2,
   Loader2,
-  Play
+  Play,
 } from "lucide-react";
 import Image from "next/image";
 
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
-import { coursesApi, enrollmentsApi, modulesApi, lessonsApi, progressApi } from "@/lib/api";
+import {
+  coursesApi,
+  enrollmentsApi,
+  modulesApi,
+  lessonsApi,
+  progressApi,
+} from "@/lib/api";
 import { Course, Module, Lesson, Progress } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
+import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 export default function CoursePageClient() {
   const { id } = useParams<{ id: string }>();
@@ -41,63 +54,67 @@ export default function CoursePageClient() {
   useEffect(() => {
     const fetchCourseData = async () => {
       try {
-        // Fetch course details
         const courseResponse = await coursesApi.getCourseById(id);
         if (courseResponse.data) {
-          setCourse(courseResponse.data.data);
+          setCourse(courseResponse.data);
         }
 
-        // Fetch modules for this course
         const modulesResponse = await modulesApi.getModulesByCourse(id);
         if (modulesResponse.data) {
-          const moduleData = modulesResponse.data.data || [];
-          setModules(moduleData);
+          const sortedModules = [...modulesResponse.data].sort(
+            (a, b) => a.order - b.order
+          );
+          setModules(sortedModules);
 
-          // Fetch lessons for each module
           const lessonData: { [key: string]: Lesson[] } = {};
           await Promise.all(
-            moduleData.map(async (module) => {
-              const lessonsResponse = await lessonsApi.getLessonsByModule(module.id);
+            sortedModules.map(async (module) => {
+              const lessonsResponse = await lessonsApi.getLessonsByModule(
+                module.id
+              );
               if (lessonsResponse.data) {
-                lessonData[module.id] = lessonsResponse.data.data || [];
+                lessonData[module.id] = lessonsResponse.data;
               }
             })
           );
           setLessons(lessonData);
-        }
 
-        // Check if the user is enrolled in this course
-        if (user?.role === 'STUDENT') {
-          const enrollmentResponse = await enrollmentsApi.getMyEnrollments();
-          if (enrollmentResponse.data) {
-            const enrollments = enrollmentResponse.data.data || [];
-            const isUserEnrolled = enrollments.some(e => e.courseId === id);
-            setIsEnrolled(isUserEnrolled);
+          if (user?.role === "STUDENT") {
+            const enrollmentResponse = await enrollmentsApi.getMyEnrollments();
+            if (enrollmentResponse.data) {
+              const enrollments = enrollmentResponse.data;
+              const isUserEnrolled = enrollments.some((e) => e.courseId === id);
+              setIsEnrolled(isUserEnrolled);
 
-            if (isUserEnrolled) {
-              // Fetch course progress
-              const progressResponse = await progressApi.getCourseProgress(id);
-              if (progressResponse.data) {
-                const progressData = progressResponse.data.data || [];
-                
-                // Calculate overall progress (percentage of completed lessons)
-                const completedLessons = progressData.filter(p => p.completed).length;
-                const totalLessons = progressData.length;
-                const progress = totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0;
-                setCourseProgress(progress);
-
-                // Set lesson completion status
+              if (isUserEnrolled) {
                 const lessonProgress: { [key: string]: boolean } = {};
-                progressData.forEach(progress => {
-                  lessonProgress[progress.lessonId] = progress.completed;
-                });
+                await Promise.all(
+                  Object.values(lessonData)
+                    .flat()
+                    .map(async (lesson: Lesson) => {
+                      const progressResponse =
+                        await progressApi.getLessonProgress(lesson.id);
+                      if (progressResponse.data) {
+                        lessonProgress[lesson.id] =
+                          progressResponse.data.completed;
+                      }
+                    })
+                );
                 setProgress(lessonProgress);
+
+                const totalLessons = Object.values(lessonData).flat().length;
+                const completedLessons =
+                  Object.values(lessonProgress).filter(Boolean).length;
+                const progress =
+                  totalLessons > 0
+                    ? (completedLessons / totalLessons) * 100
+                    : 0;
+                setCourseProgress(progress);
               }
             }
+          } else if (isAdmin) {
+            setIsEnrolled(true);
           }
-        } else if (isAdmin) {
-          // Admins can view courses without enrollment
-          setIsEnrolled(true);
         }
       } catch (error) {
         console.error("Failed to fetch course data:", error);
@@ -150,19 +167,17 @@ export default function CoursePageClient() {
   const handleMarkComplete = async (lessonId: string) => {
     try {
       await progressApi.markLessonAsCompleted(lessonId);
-      setProgress(prev => ({ ...prev, [lessonId]: true }));
-      
-      // Update overall course progress
-      const progressResponse = await progressApi.getCourseProgress(id);
-      if (progressResponse.data) {
-        const progressData = progressResponse.data.data || [];
-        // Calculate progress percentage
-        const completedLessons = progressData.filter(p => p.completed).length;
-        const totalLessons = progressData.length;
-        const progress = totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0;
-        setCourseProgress(progress);
-      }
-      
+      setProgress((prev) => ({ ...prev, [lessonId]: true }));
+
+      const totalLessons = Object.values(lessons).flat().length;
+      const completedLessons = Object.values({
+        ...progress,
+        [lessonId]: true,
+      }).filter(Boolean).length;
+      const newProgress =
+        totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0;
+      setCourseProgress(newProgress);
+
       toast({
         title: "Progress Updated",
         description: "Lesson marked as completed.",
@@ -198,7 +213,7 @@ export default function CoursePageClient() {
               The course you're looking for doesn't exist or has been removed.
             </p>
             <Button asChild>
-              <a href="/courses">Back to Courses</a>
+              <Link href="/courses">Browse Courses</Link>
             </Button>
           </div>
         </div>
@@ -206,167 +221,210 @@ export default function CoursePageClient() {
     );
   }
 
-  // Calculate total lessons count
-  const totalLessonsCount = Object.values(lessons).reduce(
-    (total, moduleLessons) => total + moduleLessons.length, 
-    0
-  );
-
-  // Calculate completed lessons count
-  const completedLessonsCount = Object.values(progress).filter(Boolean).length;
-
   return (
     <DashboardLayout>
-      <div>
-        {/* Course Header */}
-        <div className="relative">
-          <div className="h-48 md:h-64 w-full bg-indigo-600 dark:bg-indigo-900">
-            {course.imageUrl && (
-              <div className="absolute inset-0">
-                <Image
-                  src={course.imageUrl || "https://images.pexels.com/photos/5428010/pexels-photo-5428010.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1"}
-                  alt={course.title}
-                  fill
-                  className="object-cover opacity-20"
-                />
+      <div className="min-h-screen">
+        <div className="relative h-[300px] md:h-[400px] bg-gradient-to-b from-primary/20 to-background">
+          {course.imageUrl && (
+            <Image
+              src={course.imageUrl}
+              alt={course.title}
+              fill
+              className="object-cover opacity-20"
+            />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
+          <div className="container relative h-full flex flex-col justify-end p-6 md:p-8">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+              <div>
+                <h1 className="text-3xl md:text-4xl font-bold mb-2">
+                  {course.title}
+                </h1>
+                <p className="text-muted-foreground max-w-2xl">
+                  {course.description}
+                </p>
               </div>
-            )}
-            <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/80 to-indigo-900/80 dark:from-indigo-900/80 dark:to-indigo-950/80" />
-            <div className="relative h-full container mx-auto px-4 flex flex-col justify-end pb-6">
-              <h1 className="text-2xl md:text-4xl font-bold text-white">{course.title}</h1>
-              <p className="text-indigo-100 mt-2 max-w-2xl">{course.description}</p>
+              {!isAdmin && !isEnrolled && (
+                <Button
+                  size="lg"
+                  className="bg-indigo-600 hover:bg-indigo-700"
+                  onClick={handleEnroll}
+                  disabled={enrolling}
+                >
+                  {enrolling ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Enrolling...
+                    </>
+                  ) : (
+                    "Enroll Now"
+                  )}
+                </Button>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Course Content */}
-        <div className="container mx-auto px-4 py-8">
+        <div className="container p-6 md:p-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Main Content */}
             <div className="lg:col-span-2">
-              <Tabs defaultValue="overview">
+              <Tabs defaultValue="overview" className="space-y-4">
                 <TabsList>
                   <TabsTrigger value="overview">Overview</TabsTrigger>
-                  <TabsTrigger value="content">Content</TabsTrigger>
+                  <TabsTrigger value="content">Course Content</TabsTrigger>
                 </TabsList>
-                <TabsContent value="overview" className="mt-6">
-                  <div className="space-y-6">
+
+                <TabsContent value="overview">
+                  <div className="grid gap-4 md:grid-cols-2">
                     <div className="bg-card shadow-sm p-6 rounded-lg border">
-                      <h2 className="text-xl font-semibold mb-4">About This Course</h2>
-                      <p className="text-muted-foreground">{course.description}</p>
-                    </div>
-                    
-                    <div className="bg-card shadow-sm p-6 rounded-lg border">
-                      <h2 className="text-xl font-semibold mb-4">What Will I Learn?</h2>
-                      <ul className="space-y-2">
-                        <li className="flex items-start">
-                          <ChevronRight className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                          <span>Comprehensive understanding of the subject matter</span>
-                        </li>
-                        <li className="flex items-start">
-                          <ChevronRight className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                          <span>Practical skills applicable in real-world scenarios</span>
-                        </li>
-                        <li className="flex items-start">
-                          <ChevronRight className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                          <span>Industry-relevant knowledge and best practices</span>
-                        </li>
-                      </ul>
-                    </div>
-                    
-                    <div className="bg-card shadow-sm p-6 rounded-lg border">
-                      <h2 className="text-xl font-semibold mb-4">Course Structure</h2>
-                      <p className="text-muted-foreground mb-4">
-                        This course contains {modules.length} modules with a total of {totalLessonsCount} lessons.
-                      </p>
-                      <div className="space-y-3">
-                        {modules.map((module, index) => (
-                          <div key={module.id} className="flex items-center gap-3">
-                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium text-sm">
-                              {index + 1}
-                            </div>
-                            <div>
-                              <h3 className="font-medium">{module.title}</h3>
-                              <p className="text-sm text-muted-foreground">
-                                {lessons[module.id]?.length || 0} lessons
-                              </p>
-                            </div>
-                          </div>
-                        ))}
+                      <div className="flex items-center gap-2 text-primary mb-2">
+                        <Clock className="h-4 w-4" />
+                        <span className="text-sm font-medium">Duration</span>
                       </div>
+                      <p className="text-2xl font-bold">
+                        {modules.reduce(
+                          (total, module) =>
+                            total +
+                            (module.lessons?.reduce(
+                              (sum, lesson) => sum + (lesson.duration || 0),
+                              0
+                            ) || 0),
+                          0
+                        )}{" "}
+                        minutes
+                      </p>
                     </div>
+
+                    <div className="bg-card shadow-sm p-6 rounded-lg border">
+                      <div className="flex items-center gap-2 text-primary mb-2">
+                        <Award className="h-4 w-4" />
+                        <span className="text-sm font-medium">Enrolled</span>
+                      </div>
+                      <p className="text-2xl font-bold">
+                        {course.learnerCount || 0} students
+                      </p>
+                    </div>
+
+                    {isEnrolled && (
+                      <div className="md:col-span-2 bg-card shadow-sm p-6 rounded-lg border">
+                        <div className="flex items-center gap-2 text-primary mb-4">
+                          <BarChart className="h-4 w-4" />
+                          <span className="text-sm font-medium">Progress</span>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span>Course Progress</span>
+                            <span>{Math.round(courseProgress)}%</span>
+                          </div>
+                          <div className="h-2 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-primary transition-all duration-300 ease-in-out"
+                              style={{ width: `${courseProgress}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </TabsContent>
-                <TabsContent value="content" className="mt-6">
+
+                <TabsContent value="content">
                   <div className="bg-card shadow-sm rounded-lg border">
-                    <Accordion type="multiple" className="divide-y">
-                      {modules.map((module, moduleIndex) => (
-                        <AccordionItem key={module.id} value={module.id} className="border-none">
-                          <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-muted/50">
-                            <div className="flex items-center gap-3 text-left">
-                              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium text-sm">
-                                {moduleIndex + 1}
-                              </div>
-                              <div>
-                                <h3 className="font-medium">{module.title}</h3>
-                                <p className="text-sm text-muted-foreground">
-                                  {lessons[module.id]?.length || 0} lessons
-                                </p>
-                              </div>
+                    <Accordion type="single" collapsible className="w-full">
+                      {modules.map((module) => (
+                        <AccordionItem key={module.id} value={module.id}>
+                          <AccordionTrigger className="px-6">
+                            <div className="flex items-center gap-2">
+                              <span>{module.title}</span>
+                              {isAdmin && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="ml-2"
+                                  asChild
+                                >
+                                  <Link href={`/admin/modules/${module.id}`}>
+                                    Edit
+                                  </Link>
+                                </Button>
+                              )}
                             </div>
                           </AccordionTrigger>
-                          <AccordionContent className="px-0 pb-0 pt-0">
-                            <div className="pl-8 pr-0 py-2 bg-muted/30 divide-y">
-                              {lessons[module.id]?.map((lesson, lessonIndex) => {
-                                const isCompleted = progress[lesson.id] === true;
-                                
-                                return (
-                                  <div 
-                                    key={lesson.id}
-                                    className="flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors"
-                                  >
-                                    <div className="flex items-center gap-3">
-                                      <div className="h-6 w-6 flex items-center justify-center">
-                                        {isCompleted ? (
-                                          <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                                        ) : (
-                                          <span className="text-sm text-muted-foreground">
-                                            {moduleIndex + 1}.{lessonIndex + 1}
-                                          </span>
+                          <AccordionContent>
+                            <div className="px-6 pb-4">
+                              {lessons[module.id]?.length > 0 ? (
+                                <div className="space-y-2">
+                                  {lessons[module.id]
+                                    .sort((a, b) => a.order - b.order)
+                                    .map((lesson) => (
+                                      <div
+                                        key={lesson.id}
+                                        className={cn(
+                                          "flex items-center justify-between p-4 rounded-lg transition-colors",
+                                          isEnrolled
+                                            ? "hover:bg-muted cursor-pointer"
+                                            : "opacity-60 cursor-not-allowed"
+                                        )}
+                                        onClick={() =>
+                                          isEnrolled &&
+                                          navigateToLesson(module.id, lesson.id)
+                                        }
+                                      >
+                                        <div className="flex items-center gap-3">
+                                          <div
+                                            className={cn(
+                                              "p-2 rounded-md",
+                                              progress[lesson.id]
+                                                ? "bg-emerald-500/10 text-emerald-500"
+                                                : "bg-primary/10 text-primary"
+                                            )}
+                                          >
+                                            {progress[lesson.id] ? (
+                                              <CheckCircle2 className="h-4 w-4" />
+                                            ) : (
+                                              <Play className="h-4 w-4" />
+                                            )}
+                                          </div>
+                                          <div>
+                                            <h3 className="font-medium">
+                                              {lesson.title}
+                                            </h3>
+                                            {lesson.duration && (
+                                              <p className="text-sm text-muted-foreground">
+                                                {lesson.duration} minutes
+                                              </p>
+                                            )}
+                                          </div>
+                                        </div>
+                                        {isEnrolled && (
+                                          <div className="flex items-center gap-2">
+                                            {progress[lesson.id] ? (
+                                              <span className="text-xs text-emerald-500 font-medium">
+                                                Completed
+                                              </span>
+                                            ) : (
+                                              <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleMarkComplete(lesson.id);
+                                                }}
+                                              >
+                                                Mark Complete
+                                              </Button>
+                                            )}
+                                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                          </div>
                                         )}
                                       </div>
-                                      <span className="font-medium">{lesson.title}</span>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                      {lesson.duration && (
-                                        <span className="text-xs text-muted-foreground flex items-center">
-                                          <Clock className="h-3 w-3 mr-1" />
-                                          {lesson.duration} min
-                                        </span>
-                                      )}
-                                      
-                                      {isEnrolled ? (
-                                        <Button 
-                                          size="sm" 
-                                          variant={isCompleted ? "outline" : "default"}
-                                          onClick={() => navigateToLesson(module.id, lesson.id)}
-                                          className={isCompleted ? "" : "bg-indigo-600 hover:bg-indigo-700"}
-                                        >
-                                          {isCompleted ? "Review" : "Start"}
-                                        </Button>
-                                      ) : (
-                                        <Button 
-                                          size="sm" 
-                                          variant="outline" 
-                                          disabled
-                                        >
-                                          Locked
-                                        </Button>
-                                      )}
-                                    </div>
-                                  </div>
-                                );
-                              })}
+                                    ))}
+                                </div>
+                              ) : (
+                                <div className="text-center py-4 text-muted-foreground">
+                                  No lessons available in this module.
+                                </div>
+                              )}
                             </div>
                           </AccordionContent>
                         </AccordionItem>
@@ -377,140 +435,89 @@ export default function CoursePageClient() {
               </Tabs>
             </div>
 
-            {/* Sidebar */}
-            <div className="space-y-6">
-              {/* Enrollment / Progress Card */}
-              <div className="bg-card shadow-sm rounded-lg border overflow-hidden">
-                {course.imageUrl && (
-                  <div className="relative aspect-video">
-                    <Image
-                      src={course.imageUrl || "https://images.pexels.com/photos/5428010/pexels-photo-5428010.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1"}
-                      alt={course.title}
-                      fill
-                      className="object-cover"
-                    />
+            <div>
+              <div className="bg-card shadow-sm rounded-lg border p-6 space-y-6 sticky top-8">
+                <div>
+                  <h3 className="font-semibold mb-2">Course Information</h3>
+                  <div className="space-y-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Duration:</span>
+                      <p className="font-medium">
+                        {modules.reduce(
+                          (total, module) =>
+                            total +
+                            (module.lessons?.reduce(
+                              (sum, lesson) => sum + (lesson.duration || 0),
+                              0
+                            ) || 0),
+                          0
+                        )}{" "}
+                        minutes
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Modules:</span>
+                      <p className="font-medium">{modules.length}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Lessons:</span>
+                      <p className="font-medium">
+                        {Object.values(lessons).reduce(
+                          (total, moduleLessons) =>
+                            total + moduleLessons.length,
+                          0
+                        )}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Students:</span>
+                      <p className="font-medium">
+                        {course.learnerCount || 0} enrolled
+                      </p>
+                    </div>
+                    {course.rating && (
+                      <div>
+                        <span className="text-muted-foreground">Rating:</span>
+                        <p className="font-medium">{course.rating} / 5</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {isAdmin ? (
+                  <Button className="w-full" asChild>
+                    <Link href={`/admin/courses/${id}`}>Edit Course</Link>
+                  </Button>
+                ) : !isEnrolled ? (
+                  <Button
+                    className="w-full bg-indigo-600 hover:bg-indigo-700"
+                    onClick={handleEnroll}
+                    disabled={enrolling}
+                  >
+                    {enrolling ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Enrolling...
+                      </>
+                    ) : (
+                      "Enroll Now"
+                    )}
+                  </Button>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Course Progress</span>
+                      <span>{Math.round(courseProgress)}%</span>
+                    </div>
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary transition-all duration-300 ease-in-out"
+                        style={{ width: `${courseProgress}%` }}
+                      />
+                    </div>
                   </div>
                 )}
-
-                <div className="p-6">
-                  {isEnrolled ? (
-                    <div className="space-y-4">
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium">Your Progress</span>
-                          <span className="text-sm font-medium">{courseProgress}%</span>
-                        </div>
-                        <div className="w-full bg-muted rounded-full h-2">
-                          <div
-                            className="bg-primary rounded-full h-2 transition-all duration-300 ease-in-out"
-                            style={{ width: `${courseProgress}%` }}
-                          />
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-2">
-                          {completedLessonsCount} of {totalLessonsCount} lessons completed
-                        </p>
-                      </div>
-
-                      <Button className="w-full bg-indigo-600 hover:bg-indigo-700">
-                        {courseProgress > 0 ? "Continue Learning" : "Start Learning"}
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">
-                          {totalLessonsCount} lessons
-                        </span>
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <Award className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">
-                          Certification available
-                        </span>
-                      </div>
-
-                      <Button 
-                        className="w-full bg-indigo-600 hover:bg-indigo-700" 
-                        onClick={handleEnroll}
-                        disabled={enrolling}
-                      >
-                        {enrolling ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
-                            Enrolling...
-                          </>
-                        ) : (
-                          "Enroll in Course"
-                        )}
-                      </Button>
-                    </div>
-                  )}
-                </div>
               </div>
-
-              {/* Course Stats */}
-              <div className="bg-card shadow-sm rounded-lg border p-6">
-                <h3 className="font-semibold mb-4">Course Information</h3>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Modules</span>
-                    <span className="font-medium">{modules.length}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Lessons</span>
-                    <span className="font-medium">{totalLessonsCount}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Students</span>
-                    <span className="font-medium">{course.learnerCount || "--"}</span>
-                  </div>
-                  {course.rating && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Rating</span>
-                      <div className="flex items-center">
-                        <span className="font-medium mr-1">{course.rating}</span>
-                        <div className="flex">
-                          {[...Array(5)].map((_, i) => (
-                            <svg
-                              key={i}
-                              className={`h-4 w-4 ${
-                                i < Math.floor(course.rating || 0)
-                                  ? "text-yellow-400 fill-current"
-                                  : "text-muted stroke-current"
-                              }`}
-                              xmlns="http://www.w3.org/2000/svg"
-                              viewBox="0 0 24 24"
-                            >
-                              <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27z" />
-                            </svg>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Admin Actions */}
-              {isAdmin && (
-                <div className="bg-card shadow-sm rounded-lg border p-6">
-                  <h3 className="font-semibold mb-4">Admin Actions</h3>
-                  <div className="space-y-3">
-                    <Button variant="outline" className="w-full justify-start">
-                      <BarChart className="mr-2 h-4 w-4" />
-                      View Analytics
-                    </Button>
-                    <Button variant="outline" className="w-full justify-start">
-                      Edit Course
-                    </Button>
-                    <Button variant="outline" className="w-full justify-start text-destructive hover:text-destructive">
-                      Delete Course
-                    </Button>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -518,4 +525,3 @@ export default function CoursePageClient() {
     </DashboardLayout>
   );
 }
-
