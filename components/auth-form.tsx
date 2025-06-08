@@ -1,40 +1,46 @@
 "use client";
 
-import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 
-import { useAuth } from '@/lib/auth';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Logo } from '@/components/logo';
+import { useAuth } from "@/lib/auth";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Logo } from "@/components/logo";
 import { useToast } from "@/hooks/use-toast";
 
 const loginSchema = z.object({
-  email: z.string().email({ message: 'Please enter a valid email address' }),
-  password: z.string().min(6, { message: 'Password must be at least 6 characters' }),
+  email: z.string().email({ message: "Please enter a valid email address" }),
+  password: z
+    .string()
+    .min(6, { message: "Password must be at least 6 characters" }),
 });
 
-const registerSchema = z.object({
-  name: z.string().min(2, { message: 'Name must be at least 2 characters' }),
-  email: z.string().email({ message: 'Please enter a valid email address' }),
-  password: z.string().min(6, { message: 'Password must be at least 6 characters' }),
-  confirmPassword: z.string(),
-}).refine(data => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-});
+const registerSchema = z
+  .object({
+    name: z.string().min(2, { message: "Name must be at least 2 characters" }),
+    email: z.string().email({ message: "Please enter a valid email address" }),
+    password: z
+      .string()
+      .min(6, { message: "Password must be at least 6 characters" }),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
 interface AuthFormProps {
-  type: 'login' | 'register';
+  type: "login" | "register";
 }
 
 export function AuthForm({ type }: AuthFormProps) {
@@ -66,7 +72,7 @@ export function AuthForm({ type }: AuthFormProps) {
     try {
       const result = await login(data.email, data.password);
       if (result.success) {
-        router.push('/dashboard');
+        router.push("/dashboard");
         toast({
           title: "Login successful",
           description: "Welcome back to CourseIT!",
@@ -79,7 +85,7 @@ export function AuthForm({ type }: AuthFormProps) {
         });
       }
     } catch (error) {
-      console.error('Login error:', error);
+      console.error("Login error:", error);
       toast({
         variant: "destructive",
         title: "Something went wrong",
@@ -95,7 +101,7 @@ export function AuthForm({ type }: AuthFormProps) {
     try {
       const result = await register(data.name, data.email, data.password);
       if (result.success) {
-        router.push('/dashboard');
+        router.push("/dashboard");
         toast({
           title: "Registration successful",
           description: "Welcome to CourseIT!",
@@ -108,7 +114,7 @@ export function AuthForm({ type }: AuthFormProps) {
         });
       }
     } catch (error) {
-      console.error('Registration error:', error);
+      console.error("Registration error:", error);
       toast({
         variant: "destructive",
         title: "Something went wrong",
@@ -120,7 +126,8 @@ export function AuthForm({ type }: AuthFormProps) {
   };
 
   const togglePasswordVisibility = () => setShowPassword(!showPassword);
-  const toggleConfirmPasswordVisibility = () => setShowConfirmPassword(!showConfirmPassword);
+  const toggleConfirmPasswordVisibility = () =>
+    setShowConfirmPassword(!showConfirmPassword);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-4">
@@ -128,12 +135,17 @@ export function AuthForm({ type }: AuthFormProps) {
         <div className="flex flex-col items-center justify-center space-y-2">
           <Logo />
           <h2 className="text-2xl font-semibold text-center">
-            {type === 'login' ? 'Login to access your account' : 'Create an account'}
+            {type === "login"
+              ? "Login to access your account"
+              : "Create an account"}
           </h2>
         </div>
 
-        {type === 'login' ? (
-          <form onSubmit={handleLoginSubmit(onLoginSubmit)} className="space-y-6">
+        {type === "login" ? (
+          <form
+            onSubmit={handleLoginSubmit(onLoginSubmit)}
+            className="space-y-6"
+          >
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <div className="relative">
@@ -146,7 +158,9 @@ export function AuthForm({ type }: AuthFormProps) {
                 />
               </div>
               {loginErrors.email && (
-                <p className="text-sm text-destructive">{loginErrors.email.message}</p>
+                <p className="text-sm text-destructive">
+                  {loginErrors.email.message}
+                </p>
               )}
             </div>
 
@@ -158,7 +172,9 @@ export function AuthForm({ type }: AuthFormProps) {
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   {...registerLogin("password")}
-                  className={loginErrors.password ? "border-destructive pr-10" : "pr-10"}
+                  className={
+                    loginErrors.password ? "border-destructive pr-10" : "pr-10"
+                  }
                 />
                 <button
                   type="button"
@@ -173,11 +189,17 @@ export function AuthForm({ type }: AuthFormProps) {
                 </button>
               </div>
               {loginErrors.password && (
-                <p className="text-sm text-destructive">{loginErrors.password.message}</p>
+                <p className="text-sm text-destructive">
+                  {loginErrors.password.message}
+                </p>
               )}
             </div>
 
-            <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700" disabled={isLoading}>
+            <Button
+              type="submit"
+              className="w-full bg-indigo-600 hover:bg-indigo-700"
+              disabled={isLoading}
+            >
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -190,13 +212,19 @@ export function AuthForm({ type }: AuthFormProps) {
 
             <div className="text-center text-sm">
               Don't have an account?{" "}
-              <Link href="/register" className="text-indigo-600 hover:underline">
+              <Link
+                href="/register"
+                className="text-indigo-600 hover:underline"
+              >
                 Sign Up
               </Link>
             </div>
           </form>
         ) : (
-          <form onSubmit={handleSignupSubmit(onSignupSubmit)} className="space-y-6">
+          <form
+            onSubmit={handleSignupSubmit(onSignupSubmit)}
+            className="space-y-6"
+          >
             <div className="space-y-2">
               <Label htmlFor="name">Full Name</Label>
               <Input
@@ -206,7 +234,9 @@ export function AuthForm({ type }: AuthFormProps) {
                 className={signupErrors.name ? "border-destructive" : ""}
               />
               {signupErrors.name && (
-                <p className="text-sm text-destructive">{signupErrors.name.message}</p>
+                <p className="text-sm text-destructive">
+                  {signupErrors.name.message}
+                </p>
               )}
             </div>
 
@@ -220,7 +250,9 @@ export function AuthForm({ type }: AuthFormProps) {
                 className={signupErrors.email ? "border-destructive" : ""}
               />
               {signupErrors.email && (
-                <p className="text-sm text-destructive">{signupErrors.email.message}</p>
+                <p className="text-sm text-destructive">
+                  {signupErrors.email.message}
+                </p>
               )}
             </div>
 
@@ -232,7 +264,9 @@ export function AuthForm({ type }: AuthFormProps) {
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   {...registerSignup("password")}
-                  className={signupErrors.password ? "border-destructive pr-10" : "pr-10"}
+                  className={
+                    signupErrors.password ? "border-destructive pr-10" : "pr-10"
+                  }
                 />
                 <button
                   type="button"
@@ -247,7 +281,9 @@ export function AuthForm({ type }: AuthFormProps) {
                 </button>
               </div>
               {signupErrors.password && (
-                <p className="text-sm text-destructive">{signupErrors.password.message}</p>
+                <p className="text-sm text-destructive">
+                  {signupErrors.password.message}
+                </p>
               )}
             </div>
 
@@ -259,7 +295,11 @@ export function AuthForm({ type }: AuthFormProps) {
                   type={showConfirmPassword ? "text" : "password"}
                   placeholder="••••••••"
                   {...registerSignup("confirmPassword")}
-                  className={signupErrors.confirmPassword ? "border-destructive pr-10" : "pr-10"}
+                  className={
+                    signupErrors.confirmPassword
+                      ? "border-destructive pr-10"
+                      : "pr-10"
+                  }
                 />
                 <button
                   type="button"
@@ -274,11 +314,17 @@ export function AuthForm({ type }: AuthFormProps) {
                 </button>
               </div>
               {signupErrors.confirmPassword && (
-                <p className="text-sm text-destructive">{signupErrors.confirmPassword.message}</p>
+                <p className="text-sm text-destructive">
+                  {signupErrors.confirmPassword.message}
+                </p>
               )}
             </div>
 
-            <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700" disabled={isLoading}>
+            <Button
+              type="submit"
+              className="w-full bg-indigo-600 hover:bg-indigo-700"
+              disabled={isLoading}
+            >
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
