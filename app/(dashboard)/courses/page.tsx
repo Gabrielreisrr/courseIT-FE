@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Search, Loader2 } from "lucide-react";
 
 import { CourseCard } from "@/components/course-card";
-import { coursesApi, enrollmentsApi } from "@/lib/api";
+import { coursesApi, enrollmentsApi, modulesApi, lessonsApi } from "@/lib/api";
 import { Course, Enrollment } from "@/lib/types";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/auth";
@@ -18,31 +18,38 @@ export default function CoursesPage() {
   const { user } = useAuth();
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const coursesResponse = await coursesApi.getAllCourses();
-
-        if (coursesResponse.data) {
-          setCourses(coursesResponse.data.data || []);
-          setFilteredCourses(coursesResponse.data.data || []);
-        }
-
-        if (user?.role === "STUDENT") {
-          const enrollmentsResponse = await enrollmentsApi.getMyEnrollments();
-
-          if (enrollmentsResponse.data) {
-            setEnrollments(enrollmentsResponse.data.data || []);
-          }
-        }
-      } catch (error) {
-        console.error("Failed to fetch courses:", error);
-      } finally {
+    async function fetchData() {
+      setLoading(true);
+      const coursesRes = await coursesApi.getAllCourses();
+      if (!coursesRes.data) {
+        setCourses([]);
         setLoading(false);
+        return;
       }
-    };
-
+      const coursesWithModules = await Promise.all(
+        coursesRes.data.data.map(async (course) => {
+          const modulesRes = await modulesApi.getModulesByCourse(course.id);
+          const modules = modulesRes.data?.data || [];
+          const modulesWithLessons = await Promise.all(
+            modules.map(async (module) => {
+              const lessonsRes = await lessonsApi.getLessonsByModule(module.id);
+              return {
+                ...module,
+                lessons: lessonsRes.data?.data || [],
+              };
+            })
+          );
+          return {
+            ...course,
+            modules: modulesWithLessons,
+          };
+        })
+      );
+      setCourses(coursesWithModules);
+      setLoading(false);
+    }
     fetchData();
-  }, [user]);
+  }, []);
 
   useEffect(() => {
     if (!searchQuery.trim()) {
