@@ -47,9 +47,13 @@ const CoursesAdminPage = () => {
       try {
         const response = await coursesApi.getAllCourses();
         if (response.data) {
-          const courses = response.data.data;
-          setCourses(courses || []);
-          setFilteredCourses(courses || []);
+          const courses = Array.isArray(response.data.data)
+            ? response.data.data
+            : Array.isArray(response.data)
+            ? response.data
+            : [];
+          setCourses(courses);
+          setFilteredCourses(courses);
         }
       } catch (error) {
         console.error("Failed to fetch courses:", error);

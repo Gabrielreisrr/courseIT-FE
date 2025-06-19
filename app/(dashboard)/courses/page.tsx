@@ -93,7 +93,6 @@ export default function CoursesPage() {
       {filteredCourses.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredCourses.map((course) => {
-            // Find enrollment to get progress
             const enrollment = enrollments.find(
               (e) => e.courseId === course.id
             );

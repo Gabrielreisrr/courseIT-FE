@@ -20,14 +20,12 @@ export default function MyCoursesPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch user enrollments
         const enrollmentsResponse = await enrollmentsApi.getMyEnrollments();
 
         if (enrollmentsResponse.data && enrollmentsResponse.data.data) {
           const userEnrollments = enrollmentsResponse.data.data;
           setEnrollments(userEnrollments);
 
-          // Fetch details of enrolled courses
           const enrolledCoursesData = await Promise.all(
             userEnrollments.map((enrollment) =>
               coursesApi.getCourseById(enrollment.courseId)
@@ -73,7 +71,6 @@ export default function MyCoursesPage() {
       {enrolledCourses.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {enrolledCourses.map((course) => {
-            // Find enrollment to get progress
             const enrollment = enrollments.find(
               (e) => e.courseId === course.id
             );
