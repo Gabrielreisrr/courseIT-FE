@@ -119,160 +119,152 @@ const CoursesAdminPage = () => {
 
   if (loading) {
     return (
-      <DashboardLayout>
-        <div className="p-6 md:p-8 flex flex-col items-center justify-center min-h-[50vh]">
-          <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-          <p className="text-muted-foreground">Loading courses...</p>
-        </div>
-      </DashboardLayout>
+      <div className="p-6 md:p-8 flex flex-col items-center justify-center min-h-[50vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+        <p className="text-muted-foreground">Loading courses...</p>
+      </div>
     );
   }
 
   return (
-    <DashboardLayout>
-      <div className="p-6 md:p-8">
-        <header className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">
-              Courses Management
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Create, edit, and manage your courses.
-            </p>
-          </div>
-          <Button className="bg-indigo-600 hover:bg-indigo-700" asChild>
-            <Link href="/admin/courses/new">
-              <Plus className="h-4 w-4 mr-2" />
-              Add New Course
-            </Link>
-          </Button>
-        </header>
-
-        <div className="mb-6 relative">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search courses..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
+    <div className="p-6 md:p-8">
+      <header className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">
+            Courses Management
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Create, edit, and manage your courses.
+          </p>
         </div>
+        <Button className="bg-indigo-600 hover:bg-indigo-700" asChild>
+          <Link href="/admin/courses/new">
+            <Plus className="h-4 w-4 mr-2" />
+            Add New Course
+          </Link>
+        </Button>
+      </header>
 
-        {filteredCourses.length > 0 ? (
-          <div className="bg-card rounded-lg border overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead className="hidden md:table-cell">
-                    Description
-                  </TableHead>
-                  <TableHead className="hidden md:table-cell">
-                    Students
-                  </TableHead>
-                  <TableHead className="hidden md:table-cell">Rating</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredCourses.map((course) => (
-                  <TableRow key={course.id}>
-                    <TableCell className="font-medium">
-                      {course.title}
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell max-w-xs truncate">
-                      {course.description}
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      {course.learnerCount || 0}
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      {course.rating || "-"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end items-center space-x-2">
-                        <div className="md:block hidden">
-                          <Button size="sm" variant="ghost" asChild>
-                            <Link href={`/courses/${course.id}`}>
-                              <Eye className="h-4 w-4 mr-1" />
-                              View
-                            </Link>
-                          </Button>
-                          <Button size="sm" variant="ghost" asChild>
-                            <Link href={`/admin/courses/${course.id}/edit`}>
-                              <Edit className="h-4 w-4 mr-1" />
-                              Edit
-                            </Link>
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => handleDelete(course.id)}
-                          >
-                            <Trash2 className="h-4 w-4 mr-1" />
-                            Delete
-                          </Button>
-                        </div>
-                        <div className="md:hidden block">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem asChild>
-                                <Link href={`/courses/${course.id}`}>
-                                  <Eye className="h-4 w-4 mr-2" />
-                                  View
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem asChild>
-                                <Link href={`/admin/courses/${course.id}/edit`}>
-                                  <Edit className="h-4 w-4 mr-2" />
-                                  Edit
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                onClick={() => handleDelete(course.id)}
-                              >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        ) : (
-          <div className="p-8 text-center bg-muted rounded-lg">
-            <h3 className="text-lg font-medium mb-2">No courses found</h3>
-            <p className="text-muted-foreground mb-4">
-              {searchQuery
-                ? "Try a different search term."
-                : "Get started by creating your first course."}
-            </p>
-            {!searchQuery && (
-              <Button asChild className="bg-indigo-600 hover:bg-indigo-700">
-                <Link href="/admin/courses/new">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Course
-                </Link>
-              </Button>
-            )}
-          </div>
-        )}
+      <div className="mb-6 relative">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search courses..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
       </div>
-    </DashboardLayout>
+
+      {filteredCourses.length > 0 ? (
+        <div className="bg-card rounded-lg border overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Title</TableHead>
+                <TableHead className="hidden md:table-cell">
+                  Description
+                </TableHead>
+                <TableHead className="hidden md:table-cell">Students</TableHead>
+                <TableHead className="hidden md:table-cell">Rating</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredCourses.map((course) => (
+                <TableRow key={course.id}>
+                  <TableCell className="font-medium">{course.title}</TableCell>
+                  <TableCell className="hidden md:table-cell max-w-xs truncate">
+                    {course.description}
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    {course.learnerCount || 0}
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    {course.rating || "-"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end items-center space-x-2">
+                      <div className="md:block hidden">
+                        <Button size="sm" variant="ghost" asChild>
+                          <Link href={`/courses/${course.id}`}>
+                            <Eye className="h-4 w-4 mr-1" />
+                            View
+                          </Link>
+                        </Button>
+                        <Button size="sm" variant="ghost" asChild>
+                          <Link href={`/admin/courses/${course.id}/edit`}>
+                            <Edit className="h-4 w-4 mr-1" />
+                            Edit
+                          </Link>
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => handleDelete(course.id)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Delete
+                        </Button>
+                      </div>
+                      <div className="md:hidden block">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
+                              <Link href={`/courses/${course.id}`}>
+                                <Eye className="h-4 w-4 mr-2" />
+                                View
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <Link href={`/admin/courses/${course.id}/edit`}>
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={() => handleDelete(course.id)}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      ) : (
+        <div className="p-8 text-center bg-muted rounded-lg">
+          <h3 className="text-lg font-medium mb-2">No courses found</h3>
+          <p className="text-muted-foreground mb-4">
+            {searchQuery
+              ? "Try a different search term."
+              : "Get started by creating your first course."}
+          </p>
+          {!searchQuery && (
+            <Button asChild className="bg-indigo-600 hover:bg-indigo-700">
+              <Link href="/admin/courses/new">
+                <Plus className="h-4 w-4 mr-2" />
+                Create Course
+              </Link>
+            </Button>
+          )}
+        </div>
+      )}
+    </div>
   );
 };
 

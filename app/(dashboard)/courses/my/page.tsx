@@ -54,55 +54,51 @@ export default function MyCoursesPage() {
 
   if (loading) {
     return (
-      <DashboardLayout>
-        <div className="p-6 md:p-8 flex flex-col items-center justify-center min-h-[50vh]">
-          <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-          <p className="text-muted-foreground">Loading your courses...</p>
-        </div>
-      </DashboardLayout>
+      <div className="p-6 md:p-8 flex flex-col items-center justify-center min-h-[50vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+        <p className="text-muted-foreground">Loading your courses...</p>
+      </div>
     );
   }
 
   return (
-    <DashboardLayout>
-      <div className="p-6 md:p-8">
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight">My Courses</h1>
-          <p className="text-muted-foreground mt-1">
-            Continue learning where you left off.
-          </p>
-        </header>
+    <div className="p-6 md:p-8">
+      <header className="mb-8">
+        <h1 className="text-3xl font-bold tracking-tight">My Courses</h1>
+        <p className="text-muted-foreground mt-1">
+          Continue learning where you left off.
+        </p>
+      </header>
 
-        {enrolledCourses.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {enrolledCourses.map((course) => {
-              // Find enrollment to get progress
-              const enrollment = enrollments.find(
-                (e) => e.courseId === course.id
-              );
-              return (
-                <CourseCard
-                  key={course.id}
-                  course={course}
-                  progress={enrollment?.progress || 0}
-                />
-              );
-            })}
-          </div>
-        ) : (
-          <div className="p-8 text-center bg-muted rounded-lg">
-            <h3 className="text-lg font-medium mb-2">
-              You're not enrolled in any courses yet
-            </h3>
-            <p className="text-muted-foreground mb-4">
-              Browse our course catalog and start your learning journey today!
-            </p>
-            <Button asChild className="bg-indigo-600 hover:bg-indigo-700">
-              <Link href="/courses">Explore Courses</Link>
-            </Button>
-          </div>
-        )}
-      </div>
-    </DashboardLayout>
+      {enrolledCourses.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {enrolledCourses.map((course) => {
+            // Find enrollment to get progress
+            const enrollment = enrollments.find(
+              (e) => e.courseId === course.id
+            );
+            return (
+              <CourseCard
+                key={course.id}
+                course={course}
+                progress={enrollment?.progress || 0}
+              />
+            );
+          })}
+        </div>
+      ) : (
+        <div className="p-8 text-center bg-muted rounded-lg">
+          <h3 className="text-lg font-medium mb-2">
+            You're not enrolled in any courses yet
+          </h3>
+          <p className="text-muted-foreground mb-4">
+            Browse our course catalog and start your learning journey today!
+          </p>
+          <Button asChild className="bg-indigo-600 hover:bg-indigo-700">
+            <Link href="/courses">Explore Courses</Link>
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }
