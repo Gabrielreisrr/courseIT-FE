@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
-import { coursesApi } from "@/lib/api";
+import { coursesApi, modulesApi, lessonsApi } from "@/lib/api";
 import { Course } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,21 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from "@/components/ui/accordion";
+import React from "react";
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 const CoursesAdminPage = () => {
   const [courses, setCourses] = useState<Course[]>([]);
@@ -41,6 +56,30 @@ const CoursesAdminPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const [expandedCourseId, setExpandedCourseId] = useState<string | null>(null);
+  const [modulesByCourse, setModulesByCourse] = useState<Record<string, any[]>>(
+    {}
+  );
+  const [lessonsByModule, setLessonsByModule] = useState<Record<string, any[]>>(
+    {}
+  );
+  const [loadingModules, setLoadingModules] = useState<string | null>(null);
+  const [showModuleDialog, setShowModuleDialog] = useState(false);
+  const [newModuleTitle, setNewModuleTitle] = useState("");
+  const [moduleCourseId, setModuleCourseId] = useState<string | null>(null);
+  const [creatingModule, setCreatingModule] = useState(false);
+  const [editModule, setEditModule] = useState<any | null>(null);
+  const [editModuleTitle, setEditModuleTitle] = useState("");
+  const [deletingModule, setDeletingModule] = useState<any | null>(null);
+  const [showLessonDialog, setShowLessonDialog] = useState(false);
+  const [newLessonTitle, setNewLessonTitle] = useState("");
+  const [lessonModuleId, setLessonModuleId] = useState<string | null>(null);
+  const [creatingLesson, setCreatingLesson] = useState(false);
+  const [editLesson, setEditLesson] = useState<any | null>(null);
+  const [editLessonTitle, setEditLessonTitle] = useState("");
+  const [deletingLesson, setDeletingLesson] = useState<any | null>(null);
+  const [newLessonContent, setNewLessonContent] = useState("");
+  const [editLessonContent, setEditLessonContent] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -121,6 +160,180 @@ const CoursesAdminPage = () => {
     }
   };
 
+  const fetchModulesAndLessons = async (courseId: string) => {
+    setLoadingModules(courseId);
+    const modulesRes = await modulesApi.getModulesByCourse(courseId);
+    console.log("modulesRes", modulesRes);
+    let modules: any[] = [];
+    if (Array.isArray(modulesRes.data?.data)) {
+      modules = modulesRes.data.data;
+    } else if (Array.isArray(modulesRes.data)) {
+      modules = modulesRes.data;
+    }
+    setModulesByCourse((prev) => ({ ...prev, [courseId]: modules }));
+    const lessonsObj: Record<string, any[]> = {};
+    await Promise.all(
+      modules.map(async (module: any) => {
+        const lessonsRes = await lessonsApi.getLessonsByModule(module.id);
+        let lessons: any[] = [];
+        if (Array.isArray(lessonsRes.data?.data)) {
+          lessons = lessonsRes.data.data;
+        } else if (Array.isArray(lessonsRes.data)) {
+          lessons = lessonsRes.data;
+        }
+        lessonsObj[module.id] = lessons;
+      })
+    );
+    setLessonsByModule((prev) => ({ ...prev, ...lessonsObj }));
+    setLoadingModules(null);
+  };
+
+  const handleOpenModuleDialog = (courseId: string) => {
+    setModuleCourseId(courseId);
+    setShowModuleDialog(true);
+  };
+
+  const handleCreateModule = async () => {
+    if (!newModuleTitle.trim() || !moduleCourseId) return;
+    setCreatingModule(true);
+    const payload = {
+      title: newModuleTitle,
+      courseId: moduleCourseId,
+      order: modulesByCourse[moduleCourseId]?.length || 0,
+    };
+    const res = await modulesApi.createModule(payload);
+    setCreatingModule(false);
+    if (res.error) {
+      toast({ variant: "destructive", title: "Erro", description: res.error });
+      return;
+    }
+    setShowModuleDialog(false);
+    setNewModuleTitle("");
+    setExpandedCourseId(moduleCourseId);
+    await fetchModulesAndLessons(moduleCourseId);
+  };
+
+  const handleOpenEditModule = (module: any) => {
+    setEditModule(module);
+    setEditModuleTitle(module.title);
+  };
+
+  const handleUpdateModule = async () => {
+    if (!editModuleTitle.trim() || !editModule) return;
+    setCreatingModule(true);
+    const payload = {
+      title: editModuleTitle,
+    };
+    const res = await modulesApi.updateModule(editModule.id, payload);
+    setCreatingModule(false);
+    if (res.error) {
+      toast({ variant: "destructive", title: "Erro", description: res.error });
+      return;
+    }
+    setEditModule(null);
+    setEditModuleTitle("");
+    await fetchModulesAndLessons(editModule.courseId);
+  };
+
+  const handleDeleteModule = async () => {
+    if (!deletingModule) return;
+    setCreatingModule(true);
+    const res = await modulesApi.deleteModule(deletingModule.id);
+    setCreatingModule(false);
+    if (res.error) {
+      toast({ variant: "destructive", title: "Erro", description: res.error });
+      return;
+    }
+    setDeletingModule(null);
+    await fetchModulesAndLessons(deletingModule.courseId);
+  };
+
+  const handleOpenLessonDialog = (moduleId: string) => {
+    setLessonModuleId(moduleId);
+    setShowLessonDialog(true);
+    setNewLessonTitle("");
+    setNewLessonContent("");
+  };
+
+  const handleCreateLesson = async () => {
+    if (!newLessonTitle.trim() || !lessonModuleId) return;
+    setCreatingLesson(true);
+    const res = await lessonsApi.createLesson({
+      title: newLessonTitle,
+      moduleId: lessonModuleId,
+      order: lessonsByModule[lessonModuleId]?.length || 0,
+      content: newLessonContent,
+    });
+    setCreatingLesson(false);
+    if (res.error) {
+      toast({ variant: "destructive", title: "Erro", description: res.error });
+      return;
+    }
+    setShowLessonDialog(false);
+    setNewLessonTitle("");
+    setNewLessonContent("");
+    let courseId = "";
+    for (const [cId, modules] of Object.entries(modulesByCourse)) {
+      if (modules.some((m) => m.id === lessonModuleId)) {
+        courseId = cId;
+        break;
+      }
+    }
+    if (courseId) {
+      await fetchModulesAndLessons(courseId);
+    }
+  };
+
+  const handleOpenEditLesson = (lesson: any) => {
+    setEditLesson(lesson);
+    setEditLessonTitle(lesson.title);
+    setEditLessonContent(lesson.content || "");
+  };
+
+  const handleUpdateLesson = async () => {
+    if (!editLessonTitle.trim() || !editLesson) return;
+    setCreatingLesson(true);
+    const res = await lessonsApi.updateLesson(editLesson.id, {
+      title: editLessonTitle,
+      content: editLessonContent,
+    });
+    setCreatingLesson(false);
+    if (res.error) {
+      toast({ variant: "destructive", title: "Erro", description: res.error });
+      return;
+    }
+    setEditLesson(null);
+    setEditLessonTitle("");
+    setEditLessonContent("");
+    await fetchModulesAndLessons(
+      editLesson.moduleId
+        ? modulesByCourse[editLesson.moduleId]?.[0]?.courseId
+        : ""
+    );
+  };
+
+  const handleDeleteLesson = async () => {
+    if (!deletingLesson) return;
+    setCreatingLesson(true);
+    const res = await lessonsApi.deleteLesson(deletingLesson.id);
+    setCreatingLesson(false);
+    if (res.error) {
+      toast({ variant: "destructive", title: "Erro", description: res.error });
+      return;
+    }
+    setDeletingLesson(null);
+    let courseId = "";
+    for (const [cId, modules] of Object.entries(modulesByCourse)) {
+      if (modules.some((m) => m.id === deletingLesson.moduleId)) {
+        courseId = cId;
+        break;
+      }
+    }
+    if (courseId) {
+      await fetchModulesAndLessons(courseId);
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-6 md:p-8 flex flex-col items-center justify-center min-h-[50vh]">
@@ -176,26 +389,37 @@ const CoursesAdminPage = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredCourses.map((course) => (
-                <TableRow key={course.id}>
-                  <TableCell className="font-medium">{course.title}</TableCell>
-                  <TableCell className="hidden md:table-cell max-w-xs truncate">
-                    {course.description}
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    {course.learnerCount || 0}
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    {course.rating || "-"}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end items-center space-x-2">
-                      <div className="md:block hidden">
-                        <Button size="sm" variant="ghost" asChild>
-                          <Link href={`/courses/${course.id}`}>
-                            <Eye className="h-4 w-4 mr-1" />
-                            View
-                          </Link>
+              {filteredCourses.flatMap((course) => {
+                const rows = [
+                  <TableRow key={course.id}>
+                    <TableCell className="font-medium">
+                      {course.title}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell max-w-xs truncate">
+                      {course.description}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      {course.learnerCount || 0}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      {course.rating || "-"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end items-center space-x-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setExpandedCourseId(
+                              expandedCourseId === course.id ? null : course.id
+                            );
+                            if (expandedCourseId !== course.id)
+                              fetchModulesAndLessons(course.id);
+                          }}
+                        >
+                          {expandedCourseId === course.id
+                            ? "Fechar"
+                            : "Gerenciar"}
                         </Button>
                         <Button size="sm" variant="ghost" asChild>
                           <Link href={`/admin/courses/${course.id}/edit`}>
@@ -213,40 +437,144 @@ const CoursesAdminPage = () => {
                           Delete
                         </Button>
                       </div>
-                      <div className="md:hidden block">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem asChild>
-                              <Link href={`/courses/${course.id}`}>
-                                <Eye className="h-4 w-4 mr-2" />
-                                View
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                              <Link href={`/admin/courses/${course.id}/edit`}>
-                                <Edit className="h-4 w-4 mr-2" />
-                                Edit
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
-                              onClick={() => handleDelete(course.id)}
+                    </TableCell>
+                  </TableRow>,
+                ];
+                if (expandedCourseId === course.id) {
+                  rows.push(
+                    <TableRow key={course.id + "-expanded"}>
+                      <TableCell colSpan={5} className="bg-muted p-0">
+                        {loadingModules === course.id ? (
+                          <div className="flex items-center gap-2 p-4">
+                            <Loader2 className="animate-spin" /> Carregando
+                            módulos...
+                          </div>
+                        ) : (
+                          <>
+                            <Accordion
+                              type="single"
+                              collapsible
+                              className="w-full p-4"
                             >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+                              {modulesByCourse[course.id]?.map((module) => (
+                                <AccordionItem
+                                  key={module.id}
+                                  value={module.id}
+                                >
+                                  <AccordionTrigger className="group">
+                                    <div className="flex items-center justify-between w-full">
+                                      <span className="group-hover:underline">
+                                        {module.title}
+                                      </span>
+                                      <div className="flex gap-2">
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="no-underline"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleOpenEditModule(module);
+                                          }}
+                                        >
+                                          Editar
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="destructive"
+                                          className="no-underline"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setDeletingModule(module);
+                                          }}
+                                        >
+                                          Excluir
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </AccordionTrigger>
+                                  <AccordionContent>
+                                    <div className="flex justify-between items-center mb-2">
+                                      <span className="font-semibold">
+                                        Lições
+                                      </span>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() =>
+                                          handleOpenLessonDialog(module.id)
+                                        }
+                                      >
+                                        Adicionar Lição
+                                      </Button>
+                                    </div>
+                                    <ul className="space-y-2">
+                                      {lessonsByModule[module.id]?.map(
+                                        (lesson) => (
+                                          <li
+                                            key={lesson.id}
+                                            className="flex justify-between items-center bg-card rounded p-2"
+                                          >
+                                            <span>{lesson.title}</span>
+                                            <div className="flex gap-2">
+                                              <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() =>
+                                                  handleOpenEditLesson(lesson)
+                                                }
+                                              >
+                                                Editar
+                                              </Button>
+                                              <Button
+                                                size="sm"
+                                                variant="destructive"
+                                                onClick={() =>
+                                                  setDeletingLesson(lesson)
+                                                }
+                                              >
+                                                Excluir
+                                              </Button>
+                                            </div>
+                                          </li>
+                                        )
+                                      )}
+                                      {(!lessonsByModule[module.id] ||
+                                        lessonsByModule[module.id].length ===
+                                          0) && (
+                                        <li className="text-muted-foreground">
+                                          Nenhuma lição cadastrada.
+                                        </li>
+                                      )}
+                                    </ul>
+                                  </AccordionContent>
+                                </AccordionItem>
+                              ))}
+                              {(!modulesByCourse[course.id] ||
+                                modulesByCourse[course.id].length === 0) && (
+                                <div className="text-muted-foreground p-4">
+                                  Nenhum módulo cadastrado.
+                                </div>
+                              )}
+                            </Accordion>
+                            <div className="mt-4 px-4 pb-4">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  handleOpenModuleDialog(course.id)
+                                }
+                              >
+                                Adicionar Módulo
+                              </Button>
+                            </div>
+                          </>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                }
+                return rows;
+              })}
             </TableBody>
           </Table>
         </div>
@@ -268,6 +596,196 @@ const CoursesAdminPage = () => {
           )}
         </div>
       )}
+
+      <Dialog open={showModuleDialog} onOpenChange={setShowModuleDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Novo Módulo</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input
+              placeholder="Título do módulo"
+              value={newModuleTitle}
+              onChange={(e) => setNewModuleTitle(e.target.value)}
+              disabled={creatingModule}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={handleCreateModule}
+              disabled={creatingModule || !newModuleTitle.trim()}
+            >
+              {creatingModule ? (
+                <Loader2 className="animate-spin h-4 w-4 mr-2" />
+              ) : null}
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!editModule}
+        onOpenChange={(v) => {
+          if (!v) setEditModule(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Módulo</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input
+              placeholder="Título do módulo"
+              value={editModuleTitle}
+              onChange={(e) => setEditModuleTitle(e.target.value)}
+              disabled={creatingModule}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={handleUpdateModule}
+              disabled={creatingModule || !editModuleTitle.trim()}
+            >
+              {creatingModule ? (
+                <Loader2 className="animate-spin h-4 w-4 mr-2" />
+              ) : null}
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!deletingModule}
+        onOpenChange={(v) => {
+          if (!v) setDeletingModule(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Excluir Módulo</DialogTitle>
+          </DialogHeader>
+          <p>
+            Tem certeza que deseja excluir este módulo? Esta ação não pode ser
+            desfeita.
+          </p>
+          <DialogFooter>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteModule}
+              disabled={creatingModule}
+            >
+              {creatingModule ? (
+                <Loader2 className="animate-spin h-4 w-4 mr-2" />
+              ) : null}
+              Excluir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showLessonDialog} onOpenChange={setShowLessonDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nova Lição</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input
+              placeholder="Título da lição"
+              value={newLessonTitle}
+              onChange={(e) => setNewLessonTitle(e.target.value)}
+              disabled={creatingLesson}
+            />
+            <textarea
+              placeholder="Conteúdo da lição"
+              className="w-full min-h-[100px] border rounded p-2"
+              value={newLessonContent}
+              onChange={(e) => setNewLessonContent(e.target.value)}
+              disabled={creatingLesson}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={handleCreateLesson}
+              disabled={creatingLesson || !newLessonTitle.trim()}
+            >
+              {creatingLesson ? (
+                <Loader2 className="animate-spin h-4 w-4 mr-2" />
+              ) : null}
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!editLesson}
+        onOpenChange={(v) => {
+          if (!v) setEditLesson(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Lição</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input
+              placeholder="Título da lição"
+              value={editLessonTitle}
+              onChange={(e) => setEditLessonTitle(e.target.value)}
+              disabled={creatingLesson}
+            />
+            <textarea
+              placeholder="Conteúdo da lição"
+              className="w-full min-h-[100px] border rounded p-2"
+              value={editLessonContent}
+              onChange={(e) => setEditLessonContent(e.target.value)}
+              disabled={creatingLesson}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={handleUpdateLesson}
+              disabled={creatingLesson || !editLessonTitle.trim()}
+            >
+              {creatingLesson ? (
+                <Loader2 className="animate-spin h-4 w-4 mr-2" />
+              ) : null}
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!deletingLesson}
+        onOpenChange={(v) => {
+          if (!v) setDeletingLesson(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Excluir Lição</DialogTitle>
+          </DialogHeader>
+          <p>
+            Tem certeza que deseja excluir esta lição? Esta ação não pode ser
+            desfeita.
+          </p>
+          <DialogFooter>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteLesson}
+              disabled={creatingLesson}
+            >
+              {creatingLesson ? (
+                <Loader2 className="animate-spin h-4 w-4 mr-2" />
+              ) : null}
+              Excluir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -45,9 +45,11 @@ async function fetchApi<T>(
     const token = getToken();
 
     const headers: Record<string, string> = {
-      "Content-Type": "application/json",
       ...(options.headers as Record<string, string>),
     };
+    if (options.body && options.method !== "DELETE") {
+      headers["Content-Type"] = "application/json";
+    }
 
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
@@ -58,10 +60,15 @@ async function fetchApi<T>(
       headers: headers as HeadersInit,
     });
 
-    const data = await response.json();
+    if (response.status === 204) {
+      return { data: undefined as T };
+    }
+
+    const text = await response.text();
+    const data = text ? JSON.parse(text) : null;
 
     if (!response.ok) {
-      return { error: data.message || data.error || "An error occurred" };
+      return { error: data?.message || data?.error || "An error occurred" };
     }
 
     return { data: data as T };

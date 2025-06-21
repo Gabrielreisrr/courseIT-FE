@@ -59,16 +59,6 @@ export function SidebarNav() {
           href: "/admin/courses",
           icon: <BookMarked className="h-5 w-5" />,
         },
-        {
-          title: "Modules Management",
-          href: "/admin/modules",
-          icon: <LayoutDashboard className="h-5 w-5" />,
-        },
-        {
-          title: "Lessons Management",
-          href: "/admin/lessons",
-          icon: <FileText className="h-5 w-5" />,
-        },
       ]
     : [];
 
