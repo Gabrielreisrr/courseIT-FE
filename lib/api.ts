@@ -204,6 +204,32 @@ export const lessonsApi = {
       method: "DELETE",
     });
   },
+
+  uploadVideo: async (
+    lessonId: string,
+    file: File
+  ): Promise<ApiResponse<Lesson>> => {
+    const token = getToken();
+    const formData = new FormData();
+    formData.append("video", file);
+    const response = await fetch(
+      `${API_URL}/lessons/${lessonId}/upload-video`,
+      {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        body: formData,
+      }
+    );
+    if (response.status === 204) {
+      return { data: undefined as unknown as Lesson };
+    }
+    const text = await response.text();
+    const data = text ? JSON.parse(text) : null;
+    if (!response.ok) {
+      return { error: data?.message || data?.error || "An error occurred" };
+    }
+    return { data: data as Lesson };
+  },
 };
 
 export const enrollmentsApi = {

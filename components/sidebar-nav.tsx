@@ -63,7 +63,7 @@ export function SidebarNav() {
     : [];
 
   return (
-    <div className="hidden lg:flex flex-col h-screen w-64 border-r bg-card">
+    <div className="hidden lg:flex flex-col h-screen w-64 border-r bg-card fixed left-0 top-0 z-40">
       <div className="p-4 flex justify-between items-center">
         <Logo />
         <ThemeToggle />

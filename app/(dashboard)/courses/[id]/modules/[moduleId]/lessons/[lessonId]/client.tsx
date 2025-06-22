@@ -46,41 +46,42 @@ export default function LessonPageClient() {
         }
 
         const moduleResponse = await modulesApi.getModulesByCourse(id);
-        if (moduleResponse.data) {
-          const modules = moduleResponse.data || [];
-          setAllModules(modules);
+        const modules = Array.isArray(moduleResponse.data?.data)
+          ? moduleResponse.data.data
+          : Array.isArray(moduleResponse.data)
+          ? moduleResponse.data
+          : [];
+        setAllModules(modules);
 
-          const currentModule = modules.find((m) => m.id === moduleId);
-          setModule(currentModule || null);
+        const currentModule = modules.find((m) => m.id === moduleId);
+        setModule(currentModule || null);
 
-          const lessonData: { [key: string]: Lesson[] } = {};
-          await Promise.all(
-            modules.map(async (module) => {
-              const lessonsResponse = await lessonsApi.getLessonsByModule(
-                module.id
-              );
-              if (lessonsResponse.data) {
-                lessonData[module.id] = lessonsResponse.data || [];
-              }
-            })
-          );
-          setAllLessons(lessonData);
-
-          if (currentModule) {
-            const currentLessonResponse = await lessonsApi.getLessonsByModule(
-              moduleId
+        const lessonData: { [key: string]: Lesson[] } = {};
+        await Promise.all(
+          modules.map(async (module) => {
+            const lessonsResponse = await lessonsApi.getLessonsByModule(
+              module.id
             );
-            if (currentLessonResponse.data) {
-              const lessons = currentLessonResponse.data || [];
-              const currentLesson = lessons.find((l) => l.id === lessonId);
-              setLesson(currentLesson || null);
-            }
-          }
-        }
+            lessonData[module.id] = Array.isArray(lessonsResponse.data?.data)
+              ? lessonsResponse.data.data
+              : Array.isArray(lessonsResponse.data)
+              ? lessonsResponse.data
+              : [];
+          })
+        );
+        setAllLessons(lessonData);
 
-        const progressResponse = await progressApi.getLessonProgress(lessonId);
-        if (progressResponse.data) {
-          setCompleted(progressResponse.data?.completed || false);
+        if (currentModule) {
+          const currentLessonResponse = await lessonsApi.getLessonsByModule(
+            moduleId
+          );
+          const lessons = Array.isArray(currentLessonResponse.data?.data)
+            ? currentLessonResponse.data.data
+            : Array.isArray(currentLessonResponse.data)
+            ? currentLessonResponse.data
+            : [];
+          const currentLesson = lessons.find((l) => l.id === lessonId);
+          setLesson(currentLesson || null);
         }
       } catch (error) {
         console.error("Failed to fetch lesson data:", error);
@@ -96,6 +97,23 @@ export default function LessonPageClient() {
 
     fetchData();
   }, [id, moduleId, lessonId, toast]);
+
+  useEffect(() => {
+    if (!lesson) return;
+    let cancelled = false;
+    const fetchProgress = async () => {
+      try {
+        const progressResponse = await progressApi.getLessonProgress(lesson.id);
+        if (!cancelled && progressResponse.data) {
+          setCompleted(progressResponse.data?.completed || false);
+        }
+      } catch (error) {}
+    };
+    fetchProgress();
+    return () => {
+      cancelled = true;
+    };
+  }, [lesson]);
 
   const markAsComplete = async () => {
     setMarkingComplete(true);
@@ -178,7 +196,8 @@ export default function LessonPageClient() {
         <div className="p-8 text-center bg-muted rounded-lg">
           <h3 className="text-xl font-medium mb-2">Lesson Not Found</h3>
           <p className="text-muted-foreground mb-4">
-            The lesson you're looking for doesn't exist or has been removed.
+            The lesson you&apos;re looking for doesn&apos;t exist or has been
+            removed.
           </p>
           <Button asChild>
             <a href={`/courses/${id}`}>Back to Course</a>
@@ -238,7 +257,7 @@ export default function LessonPageClient() {
       </header>
 
       <div className="flex-1 overflow-auto p-6 md:p-8">
-        <div className="container mx-auto">
+        <div className="w-full max-w-2xl mx-auto">
           <h1 className="text-3xl font-bold mb-2">{lesson.title}</h1>
           <div className="flex items-center text-sm text-muted-foreground mb-6">
             <span>{course.title}</span>
@@ -247,6 +266,15 @@ export default function LessonPageClient() {
           </div>
 
           <div className="prose prose-lg dark:prose-invert max-w-none mb-8">
+            {lesson.videoUrl && (
+              <video
+                controls
+                className="w-full max-w-xl h-auto rounded mb-4 mx-auto"
+                src={`${
+                  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"
+                }${lesson.videoUrl}`}
+              />
+            )}
             {lesson.content ? (
               <div dangerouslySetInnerHTML={{ __html: lesson.content }} />
             ) : (

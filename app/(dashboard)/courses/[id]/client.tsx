@@ -60,61 +60,69 @@ export default function CoursePageClient() {
         }
 
         const modulesResponse = await modulesApi.getModulesByCourse(id);
-        if (modulesResponse.data) {
-          const sortedModules = [...modulesResponse.data].sort(
-            (a, b) => a.order - b.order
-          );
-          setModules(sortedModules);
+        const modulesData = Array.isArray(modulesResponse.data?.data)
+          ? modulesResponse.data.data
+          : Array.isArray(modulesResponse.data)
+          ? modulesResponse.data
+          : [];
+        const sortedModules = [...modulesData].sort(
+          (a, b) => a.order - b.order
+        );
+        const lessonData: { [key: string]: Lesson[] } = {};
+        await Promise.all(
+          sortedModules.map(async (module) => {
+            const lessonsResponse = await lessonsApi.getLessonsByModule(
+              module.id
+            );
+            lessonData[module.id] = Array.isArray(lessonsResponse.data?.data)
+              ? lessonsResponse.data.data
+              : Array.isArray(lessonsResponse.data)
+              ? lessonsResponse.data
+              : [];
+          })
+        );
+        setLessons(lessonData);
+        const modulesWithLessons = sortedModules.map((module) => ({
+          ...module,
+          lessons: lessonData[module.id] || [],
+        }));
+        setModules(modulesWithLessons);
 
-          const lessonData: { [key: string]: Lesson[] } = {};
-          await Promise.all(
-            sortedModules.map(async (module) => {
-              const lessonsResponse = await lessonsApi.getLessonsByModule(
-                module.id
+        if (user?.role === "STUDENT") {
+          const enrollmentResponse = await enrollmentsApi.getMyEnrollments();
+          if (enrollmentResponse.data) {
+            const enrollments = Array.isArray(enrollmentResponse.data.data)
+              ? enrollmentResponse.data.data
+              : [];
+            const isUserEnrolled = enrollments.some((e) => e.courseId === id);
+            setIsEnrolled(isUserEnrolled);
+
+            if (isUserEnrolled) {
+              const lessonProgress: { [key: string]: boolean } = {};
+              await Promise.all(
+                Object.values(lessonData)
+                  .flat()
+                  .map(async (lesson: Lesson) => {
+                    const progressResponse =
+                      await progressApi.getLessonProgress(lesson.id);
+                    if (progressResponse.data) {
+                      lessonProgress[lesson.id] =
+                        progressResponse.data.completed;
+                    }
+                  })
               );
-              if (lessonsResponse.data) {
-                lessonData[module.id] = lessonsResponse.data;
-              }
-            })
-          );
-          setLessons(lessonData);
+              setProgress(lessonProgress);
 
-          if (user?.role === "STUDENT") {
-            const enrollmentResponse = await enrollmentsApi.getMyEnrollments();
-            if (enrollmentResponse.data) {
-              const enrollments = enrollmentResponse.data;
-              const isUserEnrolled = enrollments.some((e) => e.courseId === id);
-              setIsEnrolled(isUserEnrolled);
-
-              if (isUserEnrolled) {
-                const lessonProgress: { [key: string]: boolean } = {};
-                await Promise.all(
-                  Object.values(lessonData)
-                    .flat()
-                    .map(async (lesson: Lesson) => {
-                      const progressResponse =
-                        await progressApi.getLessonProgress(lesson.id);
-                      if (progressResponse.data) {
-                        lessonProgress[lesson.id] =
-                          progressResponse.data.completed;
-                      }
-                    })
-                );
-                setProgress(lessonProgress);
-
-                const totalLessons = Object.values(lessonData).flat().length;
-                const completedLessons =
-                  Object.values(lessonProgress).filter(Boolean).length;
-                const progress =
-                  totalLessons > 0
-                    ? (completedLessons / totalLessons) * 100
-                    : 0;
-                setCourseProgress(progress);
-              }
+              const totalLessons = Object.values(lessonData).flat().length;
+              const completedLessons =
+                Object.values(lessonProgress).filter(Boolean).length;
+              const progress =
+                totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0;
+              setCourseProgress(progress);
             }
-          } else if (isAdmin) {
-            setIsEnrolled(true);
           }
+        } else if (isAdmin) {
+          setIsEnrolled(true);
         }
       } catch (error) {
         console.error("Failed to fetch course data:", error);
@@ -207,7 +215,8 @@ export default function CoursePageClient() {
         <div className="p-8 text-center bg-muted rounded-lg">
           <h3 className="text-xl font-medium mb-2">Course Not Found</h3>
           <p className="text-muted-foreground mb-4">
-            The course you're looking for doesn't exist or has been removed.
+            The course you&apos;re looking for doesn&apos;t exist or has been
+            removed.
           </p>
           <Button asChild>
             <Link href="/courses">Browse Courses</Link>
@@ -216,6 +225,8 @@ export default function CoursePageClient() {
       </div>
     );
   }
+
+  console.log("modules", modules);
 
   return (
     <div className="min-h-screen">
@@ -347,9 +358,9 @@ export default function CoursePageClient() {
                         </AccordionTrigger>
                         <AccordionContent>
                           <div className="px-6 pb-4">
-                            {lessons[module.id]?.length > 0 ? (
+                            {(module.lessons?.length ?? 0) > 0 ? (
                               <div className="space-y-2">
-                                {lessons[module.id]
+                                {(module.lessons ?? [])
                                   .sort((a, b) => a.order - b.order)
                                   .map((lesson) => (
                                     <div

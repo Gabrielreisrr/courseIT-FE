@@ -48,6 +48,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 
 const CoursesAdminPage = () => {
@@ -80,6 +81,10 @@ const CoursesAdminPage = () => {
   const [deletingLesson, setDeletingLesson] = useState<any | null>(null);
   const [newLessonContent, setNewLessonContent] = useState("");
   const [editLessonContent, setEditLessonContent] = useState("");
+  const [showVideoDialog, setShowVideoDialog] = useState(false);
+  const [videoLesson, setVideoLesson] = useState<any | null>(null);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -334,6 +339,40 @@ const CoursesAdminPage = () => {
     }
   };
 
+  const handleOpenVideoDialog = (lesson: any) => {
+    setVideoLesson(lesson);
+    setShowVideoDialog(true);
+    setVideoFile(null);
+  };
+
+  const handleUploadVideo = async () => {
+    if (!videoLesson || !videoFile) return;
+    setUploadingVideo(true);
+    const res = await lessonsApi.uploadVideo(videoLesson.id, videoFile);
+    setUploadingVideo(false);
+    if (res.error) {
+      toast({ variant: "destructive", title: "Erro", description: res.error });
+      return;
+    }
+    setShowVideoDialog(false);
+    setVideoLesson(null);
+    setVideoFile(null);
+    let courseId = "";
+    for (const [cId, modules] of Object.entries(modulesByCourse)) {
+      if (modules.some((m) => m.id === videoLesson.moduleId)) {
+        courseId = cId;
+        break;
+      }
+    }
+    if (courseId) {
+      await fetchModulesAndLessons(courseId);
+    }
+    toast({
+      title: "Vídeo enviado",
+      description: "O vídeo foi enviado com sucesso.",
+    });
+  };
+
   if (loading) {
     return (
       <div className="p-6 md:p-8 flex flex-col items-center justify-center min-h-[50vh]">
@@ -462,19 +501,20 @@ const CoursesAdminPage = () => {
                                   value={module.id}
                                 >
                                   <AccordionTrigger className="group">
-                                    <div className="flex items-center justify-between w-full">
-                                      <span className="group-hover:underline">
-                                        {module.title}
-                                      </span>
+                                    <span className="group-hover:underline">
+                                      {module.title}
+                                    </span>
+                                  </AccordionTrigger>
+                                  <AccordionContent>
+                                    <div className="flex justify-between items-center mb-2">
                                       <div className="flex gap-2">
                                         <Button
                                           size="sm"
                                           variant="outline"
                                           className="no-underline"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleOpenEditModule(module);
-                                          }}
+                                          onClick={() =>
+                                            handleOpenEditModule(module)
+                                          }
                                         >
                                           Editar
                                         </Button>
@@ -482,21 +522,13 @@ const CoursesAdminPage = () => {
                                           size="sm"
                                           variant="destructive"
                                           className="no-underline"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setDeletingModule(module);
-                                          }}
+                                          onClick={() =>
+                                            setDeletingModule(module)
+                                          }
                                         >
                                           Excluir
                                         </Button>
                                       </div>
-                                    </div>
-                                  </AccordionTrigger>
-                                  <AccordionContent>
-                                    <div className="flex justify-between items-center mb-2">
-                                      <span className="font-semibold">
-                                        Lições
-                                      </span>
                                       <Button
                                         size="sm"
                                         variant="outline"
@@ -504,7 +536,7 @@ const CoursesAdminPage = () => {
                                           handleOpenLessonDialog(module.id)
                                         }
                                       >
-                                        Adicionar Lição
+                                        Nova Lição
                                       </Button>
                                     </div>
                                     <ul className="space-y-2">
@@ -514,7 +546,21 @@ const CoursesAdminPage = () => {
                                             key={lesson.id}
                                             className="flex justify-between items-center bg-card rounded p-2"
                                           >
-                                            <span>{lesson.title}</span>
+                                            <div className="flex items-center gap-4">
+                                              <span>{lesson.title}</span>
+                                              {lesson.videoUrl && (
+                                                <video
+                                                  controls
+                                                  width={200}
+                                                  src={`${
+                                                    process.env
+                                                      .NEXT_PUBLIC_API_URL ||
+                                                    "http://localhost:3000"
+                                                  }${lesson.videoUrl}`}
+                                                  className="rounded shadow"
+                                                />
+                                              )}
+                                            </div>
                                             <div className="flex gap-2">
                                               <Button
                                                 size="sm"
@@ -524,6 +570,15 @@ const CoursesAdminPage = () => {
                                                 }
                                               >
                                                 Editar
+                                              </Button>
+                                              <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() =>
+                                                  handleOpenVideoDialog(lesson)
+                                                }
+                                              >
+                                                Upload Vídeo
                                               </Button>
                                               <Button
                                                 size="sm"
@@ -601,6 +656,9 @@ const CoursesAdminPage = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Novo Módulo</DialogTitle>
+            <DialogDescription id="desc-novo-modulo">
+              Preencha o título do novo módulo.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <Input
@@ -633,6 +691,9 @@ const CoursesAdminPage = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Editar Módulo</DialogTitle>
+            <DialogDescription id="desc-editar-modulo">
+              Altere o título do módulo.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <Input
@@ -665,6 +726,9 @@ const CoursesAdminPage = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Excluir Módulo</DialogTitle>
+            <DialogDescription id="desc-excluir-modulo">
+              Confirme a exclusão do módulo. Esta ação não pode ser desfeita.
+            </DialogDescription>
           </DialogHeader>
           <p>
             Tem certeza que deseja excluir este módulo? Esta ação não pode ser
@@ -689,6 +753,9 @@ const CoursesAdminPage = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Nova Lição</DialogTitle>
+            <DialogDescription id="desc-nova-licao">
+              Preencha o título e conteúdo da nova lição.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <Input
@@ -728,6 +795,9 @@ const CoursesAdminPage = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Editar Lição</DialogTitle>
+            <DialogDescription id="desc-editar-licao">
+              Altere o título e conteúdo da lição.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <Input
@@ -767,6 +837,9 @@ const CoursesAdminPage = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Excluir Lição</DialogTitle>
+            <DialogDescription id="desc-excluir-licao">
+              Confirme a exclusão da lição. Esta ação não pode ser desfeita.
+            </DialogDescription>
           </DialogHeader>
           <p>
             Tem certeza que deseja excluir esta lição? Esta ação não pode ser
@@ -782,6 +855,41 @@ const CoursesAdminPage = () => {
                 <Loader2 className="animate-spin h-4 w-4 mr-2" />
               ) : null}
               Excluir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showVideoDialog} onOpenChange={setShowVideoDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Upload de Vídeo</DialogTitle>
+            <DialogDescription id="desc-upload-video">
+              Selecione um arquivo de vídeo para enviar para a lição.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <input
+              type="file"
+              accept="video/*"
+              onChange={(e) => setVideoFile(e.target.files?.[0] || null)}
+              disabled={uploadingVideo}
+            />
+            {videoFile && (
+              <div className="text-sm text-muted-foreground">
+                Arquivo selecionado: {videoFile.name}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={handleUploadVideo}
+              disabled={uploadingVideo || !videoFile}
+            >
+              {uploadingVideo ? (
+                <Loader2 className="animate-spin h-4 w-4 mr-2" />
+              ) : null}
+              Enviar
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -32,6 +32,7 @@ export interface Lesson {
   order: number;
   content?: string;
   duration?: number;
+  videoUrl?: string;
 }
 
 export interface Enrollment {
