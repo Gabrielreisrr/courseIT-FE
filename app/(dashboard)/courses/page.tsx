@@ -21,21 +21,39 @@ export default function CoursesPage() {
     async function fetchData() {
       setLoading(true);
       const coursesRes = await coursesApi.getAllCourses();
+      const enrollmentsRes = await enrollmentsApi.getMyEnrollments();
+
       if (!coursesRes.data) {
         setCourses([]);
         setLoading(false);
         return;
       }
+
+      const coursesData = Array.isArray(coursesRes.data.data)
+        ? coursesRes.data.data
+        : Array.isArray(coursesRes.data)
+        ? coursesRes.data
+        : [];
+
       const coursesWithModules = await Promise.all(
-        coursesRes.data.data.map(async (course) => {
+        coursesData.map(async (course) => {
           const modulesRes = await modulesApi.getModulesByCourse(course.id);
-          const modules = modulesRes.data?.data || [];
+          const modules = Array.isArray(modulesRes.data?.data)
+            ? modulesRes.data.data
+            : Array.isArray(modulesRes.data)
+            ? modulesRes.data
+            : [];
           const modulesWithLessons = await Promise.all(
             modules.map(async (module) => {
               const lessonsRes = await lessonsApi.getLessonsByModule(module.id);
+              const lessons = Array.isArray(lessonsRes.data?.data)
+                ? lessonsRes.data.data
+                : Array.isArray(lessonsRes.data)
+                ? lessonsRes.data
+                : [];
               return {
                 ...module,
-                lessons: lessonsRes.data?.data || [],
+                lessons: lessons,
               };
             })
           );
@@ -46,6 +64,16 @@ export default function CoursesPage() {
         })
       );
       setCourses(coursesWithModules);
+
+      if (enrollmentsRes.data) {
+        const enrollmentsData = Array.isArray(enrollmentsRes.data.data)
+          ? enrollmentsRes.data.data
+          : Array.isArray(enrollmentsRes.data)
+          ? enrollmentsRes.data
+          : [];
+        setEnrollments(enrollmentsData);
+      }
+
       setLoading(false);
     }
     fetchData();
@@ -103,11 +131,25 @@ export default function CoursesPage() {
             const enrollment = enrollments.find(
               (e) => e.courseId === course.id
             );
+
+            let progressValue = 0;
+            if (enrollment?.progress) {
+              if (typeof enrollment.progress === "number") {
+                progressValue = enrollment.progress;
+              } else if (
+                typeof enrollment.progress === "object" &&
+                enrollment.progress &&
+                "progressPercentage" in enrollment.progress
+              ) {
+                progressValue = (enrollment.progress as any).progressPercentage;
+              }
+            }
+
             return (
               <CourseCard
                 key={course.id}
                 course={course}
-                progress={enrollment?.progress}
+                progress={progressValue}
               />
             );
           })}

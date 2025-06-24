@@ -33,11 +33,19 @@ export default function DashboardPage() {
             : { data: [] };
 
         if (coursesResponse.data) {
-          setCourses(coursesResponse.data);
+          const coursesData = Array.isArray(coursesResponse.data.data)
+            ? coursesResponse.data.data
+            : Array.isArray(coursesResponse.data)
+            ? coursesResponse.data
+            : [];
+          setCourses(coursesData);
         }
 
         if (enrollmentsResponse.data) {
-          setEnrollments(enrollmentsResponse.data);
+          const enrollmentsData = Array.isArray(enrollmentsResponse.data)
+            ? enrollmentsResponse.data
+            : enrollmentsResponse.data.data;
+          setEnrollments(enrollmentsData);
         }
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
@@ -49,8 +57,8 @@ export default function DashboardPage() {
     fetchData();
   }, [user]);
 
-  const enrolledCourses = courses.filter((course) =>
-    enrollments.some((enrollment) => enrollment.courseId === course.id)
+  const enrolledCourses = (courses || []).filter((course) =>
+    (enrollments || []).some((enrollment) => enrollment.courseId === course.id)
   );
 
   const isAdmin = user?.role === "ADMIN";
@@ -119,11 +127,26 @@ function StudentDashboard({
               const enrollment = enrollments.find(
                 (e) => e.courseId === course.id
               );
+
+              let progressValue = 0;
+              if (enrollment?.progress) {
+                if (typeof enrollment.progress === "number") {
+                  progressValue = enrollment.progress;
+                } else if (
+                  typeof enrollment.progress === "object" &&
+                  enrollment.progress &&
+                  "progressPercentage" in enrollment.progress
+                ) {
+                  progressValue = (enrollment.progress as any)
+                    .progressPercentage;
+                }
+              }
+
               return (
                 <CourseCard
                   key={course.id}
                   course={course}
-                  progress={enrollment?.progress || 0}
+                  progress={progressValue}
                 />
               );
             })}
@@ -154,9 +177,10 @@ function StudentDashboard({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {courses
+          {(courses || [])
             .filter(
-              (course) => !enrolledCourses.some((ec) => ec.id === course.id)
+              (course) =>
+                !(enrolledCourses || []).some((ec) => ec.id === course.id)
             )
             .slice(0, 3)
             .map((course) => (
@@ -182,7 +206,7 @@ function AdminDashboard({ courses }: AdminDashboardProps) {
             <h3 className="text-muted-foreground text-sm font-medium">
               Total Courses
             </h3>
-            <p className="text-3xl font-bold mt-2">{courses.length}</p>
+            <p className="text-3xl font-bold mt-2">{(courses || []).length}</p>
           </div>
 
           <div className="bg-card shadow-sm p-6 rounded-lg border">
@@ -252,7 +276,7 @@ function AdminDashboard({ courses }: AdminDashboardProps) {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {courses.slice(0, 3).map((course) => (
+          {(courses || []).slice(0, 3).map((course) => (
             <CourseCard key={course.id} course={course} />
           ))}
         </div>

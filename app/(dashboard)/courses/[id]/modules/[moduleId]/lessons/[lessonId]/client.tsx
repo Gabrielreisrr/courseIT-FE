@@ -105,9 +105,13 @@ export default function LessonPageClient() {
       try {
         const progressResponse = await progressApi.getLessonProgress(lesson.id);
         if (!cancelled && progressResponse.data) {
-          setCompleted(progressResponse.data?.completed || false);
+          setCompleted((progressResponse.data as any)?.status === "COMPLETED");
         }
-      } catch (error) {}
+      } catch (error: any) {
+        if (error?.response?.status === 404) {
+          setCompleted(false);
+        }
+      }
     };
     fetchProgress();
     return () => {
@@ -119,7 +123,14 @@ export default function LessonPageClient() {
     setMarkingComplete(true);
     try {
       await progressApi.markLessonAsCompleted(lessonId);
-      setCompleted(true);
+      try {
+        const progressResponse = await progressApi.getLessonProgress(lessonId);
+        setCompleted((progressResponse.data as any)?.status === "COMPLETED");
+      } catch (error: any) {
+        if (error?.response?.status === 404) {
+          setCompleted(false);
+        }
+      }
       toast({
         title: "Progress Updated",
         description: "Lesson marked as completed.",
@@ -276,7 +287,11 @@ export default function LessonPageClient() {
               />
             )}
             {lesson.content ? (
-              <div dangerouslySetInnerHTML={{ __html: lesson.content }} />
+              <div className="mb-6">
+                <div className="break-words whitespace-pre-line max-w-2xl">
+                  {lesson.content}
+                </div>
+              </div>
             ) : (
               <div className="p-8 bg-muted rounded-lg flex flex-col items-center justify-center">
                 <PlayCircle className="h-16 w-16 text-muted-foreground mb-4" />

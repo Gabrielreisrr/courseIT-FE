@@ -242,9 +242,8 @@ export const enrollmentsApi = {
   enrollInCourse: async (
     courseId: string
   ): Promise<ApiResponse<Enrollment>> => {
-    return fetchApi<Enrollment>("/enrollments", {
+    return fetchApi<Enrollment>(`/enrollments/courses/${courseId}`, {
       method: "POST",
-      body: JSON.stringify({ courseId }),
     });
   },
 
@@ -261,14 +260,15 @@ export const progressApi = {
   getLessonProgress: async (
     lessonId: string
   ): Promise<ApiResponse<Progress>> => {
-    return fetchApi<Progress>(`/progress/lesson/${lessonId}`);
+    return fetchApi<Progress>(`/progress/lessons/${lessonId}`);
   },
 
   markLessonAsCompleted: async (
     lessonId: string
   ): Promise<ApiResponse<Progress>> => {
-    return fetchApi<Progress>(`/progress/lesson/${lessonId}/complete`, {
+    return fetchApi<Progress>(`/progress/lessons/${lessonId}`, {
       method: "POST",
+      body: JSON.stringify({ status: "COMPLETED" }),
     });
   },
 };

@@ -34,7 +34,7 @@ export default function MyCoursesPage() {
 
           const courses = enrolledCoursesData
             .filter((response) => response.data)
-            .map((response) => response.data!.data);
+            .map((response) => response.data!);
 
           setEnrolledCourses(courses);
         }
@@ -74,11 +74,25 @@ export default function MyCoursesPage() {
             const enrollment = enrollments.find(
               (e) => e.courseId === course.id
             );
+
+            let progressValue = 0;
+            if (enrollment?.progress) {
+              if (typeof enrollment.progress === "number") {
+                progressValue = enrollment.progress;
+              } else if (
+                typeof enrollment.progress === "object" &&
+                enrollment.progress &&
+                "progressPercentage" in enrollment.progress
+              ) {
+                progressValue = (enrollment.progress as any).progressPercentage;
+              }
+            }
+
             return (
               <CourseCard
                 key={course.id}
                 course={course}
-                progress={enrollment?.progress || 0}
+                progress={progressValue}
               />
             );
           })}
@@ -86,7 +100,7 @@ export default function MyCoursesPage() {
       ) : (
         <div className="p-8 text-center bg-muted rounded-lg">
           <h3 className="text-lg font-medium mb-2">
-            You're not enrolled in any courses yet
+            You&apos;re not enrolled in any courses yet
           </h3>
           <p className="text-muted-foreground mb-4">
             Browse our course catalog and start your learning journey today!
